@@ -1,135 +1,29 @@
-#1. Copyright statement -----
+# 1. Copyright statement -----
 # Copyright (c) 2026 the SWD study authors. Released under the MIT License (see LICENSE).
 
-#2. Author -----
+# 2. Author -----
 # Author: SWD study authors (see LICENSE)
-# Date: 2026-11-13 (last revised)
+# Date: 2026-11-14 (last revised)
 
-#3. File description -----
-# Purpose: Helper functions for 12_multiple_imputation.R: build the
-#          imputation population (225 analysed + 51 eligible starters without
-#          an SWD), derive the admissible SWD set of mid-staircase stoppers
-#          from their partial answers, run bounded predictive mean matching
-#          through mice (Model A by country, Model B pooled with country +
-#          drug), and build the comprehension-failure sensitivity population
-#          and the bound-respecting best/worst cases.
-# Inputs:  R_SWD/data/raw/data_swd_{ja,de}*.xlsx (newest; staircase answers,
-#          read by read_assigned_staircase())
+# 3. File description -----
+# Purpose: Outcome imputation for 05_multiple_imputation.R: bounded
+#          predictive mean matching through mice (Model A by country, Model B
+#          pooled with country + drug), the comprehension-failure sensitivity
+#          population, delta adjustment and the best / worst cases.
+# Inputs:  none (functions receive the imputation population)
 # Outputs: none (function definitions)
-# Depends: 00a_config.R, 01a_raw_data_loading.R,
-#          09a_additional_descriptives_helpers.R (SWD_FLOOR, SWD_CEILING,
-#          SWD_STEP, STOP_STAGE_*, as_integer_code, exclusion_list_table),
-#          01f_test_respondent_exclusion.R (RESPONDENT_KEY);
-#          tidyverse, mice
+# Depends: 00_config.R (SWD_STEP), 05a_mi_population.R
+#          (STOP_STAGE_FAILED_CHECK); tidyverse, mice
 # Style:   r_script_style_guide.md (Tier B)
 
-#4. source() and library() -----
-# None: the calling script loads tidyverse and sources 00a_config.R and the
-# files listed under Depends.
+# 4. source() and library() -----
+# None: the calling script loads tidyverse and sources 00_config.R.
 
 # Constants -----
 PMM_DONORS <- 5L
 IMPUTATION_ITERATIONS <- 1L # only the outcome is incomplete
 
-#5. Function definitions -----
-misunderstanding_exclusions <- function() {
-  exclusion_list_table(ANALYSIS_EXCLUDE)
-}
-
-# Staircase answers (1 = worthwhile, 2 = not worthwhile) on the assigned
-# track, one row per respondent and relapse rate (never-shown nodes are
-# absent from the export, hence any_of()).
-read_assigned_staircase <- function(country) {
-  survey_data <- suppressWarnings(read_sosci_data_excel(
-    find_raw_file(PATH_RAW, tolower(country), "data", "xlsx")
-  ))
-  nodes <- SWD_NODES_BY_COUNTRY[[tolower(country)]]
-  node_long <- nodes %>%
-    pivot_longer(-"relapse_pct", names_to = "drug", values_to = "node")
-  survey_data %>%
-    transmute(
-      respondent_id = as.character(as_integer_code(.data$CASE)),
-      drug = DRUG_TRACKS$drug[match(
-        as_integer_code(.data$RA01),
-        DRUG_TRACKS$ra01
-      )],
-      across(any_of(unique(node_long$node)), as_integer_code)
-    ) %>%
-    filter(!is.na(.data$respondent_id), !is.na(.data$drug)) %>%
-    pivot_longer(-c("respondent_id", "drug"),
-      names_to = "node",
-      values_to = "answer"
-    ) %>%
-    inner_join(node_long, by = c("drug", "node")) %>%
-    filter(.data$answer %in% c(YES, NO)) %>%
-    mutate(country = country)
-}
-
-# A "worthwhile" answer at relapse rate r implies SWD <= 60 - r; a "not
-# worthwhile" answer at r implies SWD >= 60 - r + 5
-# (cf. 11a_interval_regression_helpers.R).
-derive_partial_bounds <- function(staircase_answers) {
-  staircase_answers %>%
-    group_by(.data$country, .data$respondent_id) %>%
-    summarise(
-      n_answered = n(),
-      max_yes_rate = suppressWarnings(
-        max(.data$relapse_pct[.data$answer == YES])
-      ),
-      min_no_rate = suppressWarnings(
-        min(.data$relapse_pct[.data$answer == NO])
-      ),
-      answered_path = paste0(.data$relapse_pct, "%:",
-        if_else(.data$answer == YES, "yes", "no"),
-        collapse = " "
-      ),
-      .groups = "drop"
-    ) %>%
-    mutate(
-      swd_lower = if_else(is.finite(.data$min_no_rate),
-        SWD_CEILING - .data$min_no_rate + SWD_STEP, SWD_FLOOR
-      ),
-      swd_upper = if_else(is.finite(.data$max_yes_rate),
-        SWD_CEILING - .data$max_yes_rate, SWD_CEILING
-      )
-    )
-}
-
-# 276 = 225 analysed + 51 eligible starters without an SWD. The 12
-# respondents excluded for misunderstanding the task stay excluded.
-build_imputation_population <- function(eligible_starters, analysed_frame,
-                                        partial_bounds) {
-  outcome <- analysed_frame %>%
-    transmute(
-      country = as.character(.data$country),
-      respondent_id = .data$respondent_id, swd = .data$swd
-    )
-  bounds <- partial_bounds %>%
-    select(
-      "country", "respondent_id", "answered_path", "swd_lower",
-      "swd_upper"
-    )
-  eligible_starters %>%
-    anti_join(misunderstanding_exclusions(),
-      by = RESPONDENT_KEY
-    ) %>%
-    left_join(outcome, by = RESPONDENT_KEY) %>%
-    left_join(bounds, by = RESPONDENT_KEY) %>%
-    mutate(
-      is_staircase_stopper = .data$stop_stage == STOP_STAGE_STAIRCASE,
-      swd_lower = if_else(.data$is_staircase_stopper, .data$swd_lower,
-        SWD_FLOOR
-      ),
-      swd_upper = if_else(.data$is_staircase_stopper, .data$swd_upper,
-        SWD_CEILING
-      ),
-      is_japan = as.numeric(.data$country == "JP"),
-      drug_ari = as.numeric(.data$randomized_drug == "aripiprazole"),
-      drug_ola = as.numeric(.data$randomized_drug == "olanzapine")
-    ) %>%
-    arrange(.data$country, as.integer(.data$respondent_id))
-}
-
+# 5. Function definitions -----
 # Bounded PMM. Parameter uncertainty is propagated with an approximate
 # Bayesian bootstrap of the observed cases; each missing value is then drawn
 # from the k donors (of that bootstrap sample) whose predicted means are
@@ -250,5 +144,5 @@ fill_non_completers <- function(population, bound_column) {
     mutate(swd = if_else(.data$has_swd, .data$swd, .data[[bound_column]]))
 }
 
-#6. Executed statements -----
-# None (sourced by 12_multiple_imputation.R).
+# 6. Executed statements -----
+# None (sourced by 05_multiple_imputation.R).

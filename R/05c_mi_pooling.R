@@ -1,29 +1,25 @@
-#1. Copyright statement -----
+# 1. Copyright statement -----
 # Copyright (c) 2026 the SWD study authors. Released under the MIT License (see LICENSE).
 
-#2. Author -----
+# 2. Author -----
 # Author: SWD study authors (see LICENSE)
-# Date: 2026-11-13 (last revised)
+# Date: 2026-11-14 (last revised)
 
-#3. File description -----
-# Purpose: Estimators and Rubin's-rules pooling for
-#          12_multiple_imputation.R: median SWD (stats::median; within-
-#          imputation variance from a nonparametric bootstrap), mean SWD,
-#          proportion accepting the current efficacy (SWD <= 40; pooled on
-#          the logit scale) and JP-vs-DE differences (mean: OLS with HC3
-#          SE; median: difference of country medians, country-stratified
-#          bootstrap), the delta-adjusted (MNAR) analyses, plus the
-#          eAppendix table formatting.
+# 3. File description -----
+# Purpose: Estimators and pooling for 05_multiple_imputation.R: median SWD
+#          (within-imputation variance from a nonparametric bootstrap), mean
+#          SWD, proportion accepting the current efficacy (SWD <= 40; logit
+#          scale), Japan minus Germany differences (mean: OLS with HC3
+#          variance; median: country-stratified bootstrap), Rubin's rules and
+#          the delta-adjusted analyses.
 # Inputs:  none (functions receive completed datasets)
 # Outputs: none (function definitions)
-# Depends: 09a_additional_descriptives_helpers.R (CONFIDENCE_LEVEL,
-#          ALL_COUNTRIES_LABEL), 12a_mi_helpers.R (apply_delta); tidyverse,
-#          sandwich (HC3), mice (pool.scalar)
+# Depends: 00_config.R (CONFIDENCE_LEVEL, ALL_COUNTRIES_LABEL),
+#          05b_mi_outcome.R (apply_delta); tidyverse, mice, sandwich
 # Style:   r_script_style_guide.md (Tier B)
 
-#4. source() and library() -----
-# None: the calling script loads tidyverse and sources 00a_config.R and the
-# files listed under Depends.
+# 4. source() and library() -----
+# None: the calling script loads tidyverse and sources 00_config.R.
 
 # Constants -----
 CURRENT_EFFICACY_SWD <- 40 # current antipsychotics: relapse 60% -> ~20%
@@ -37,11 +33,10 @@ ESTIMAND_MEDIAN_DIFFERENCE <- "median_difference"
 DIFFERENCE_ESTIMANDS <- c(ESTIMAND_MEAN_DIFFERENCE, ESTIMAND_MEDIAN_DIFFERENCE)
 ESTIMAND_PCT_ACCEPTING <- "pct_accepting"
 ESTIMANDS <- c("median", "mean", ESTIMAND_PCT_ACCEPTING)
-# Delta shifts (SWD points) for the MNAR tipping-point analysis.
+# Delta shifts (SWD points) for the departure-from-MAR analysis.
 DELTAS <- c(-20, -10, -5, 5, 10, 20)
-RESULTS_TABLE_DIGITS <- 1
 
-#5. Function definitions -----
+# 5. Function definitions -----
 subset_country <- function(completed, subset_name) {
   if (subset_name == ALL_COUNTRIES_LABEL) {
     return(completed)
@@ -199,36 +194,6 @@ tally_imputation_medians <- function(estimates, analysis) {
     mutate(analysis = analysis, .before = 1)
 }
 
-format_interval <- function(estimate, conf_low, conf_high, digits) {
-  pattern <- paste0("%.", digits, "f [%.", digits, "f, %.", digits, "f]")
-  sprintf(pattern, estimate, conf_low, conf_high)
-}
-
-format_results_table <- function(pooled) {
-  digits_by_estimand <- set_names(rep(RESULTS_TABLE_DIGITS, 3), ESTIMANDS)
-  pooled %>%
-    filter(.data$subset %in% COUNTRY_SUBSETS) %>%
-    mutate(cell = format_interval(
-      .data$estimate, .data$conf_low,
-      .data$conf_high,
-      digits_by_estimand[.data$estimand]
-    )) %>%
-    select("analysis", "subset", "estimand", "n", "cell") %>%
-    pivot_wider(names_from = "estimand", values_from = "cell") %>%
-    pivot_wider(
-      names_from = "subset",
-      values_from = c("n", all_of(ESTIMANDS)),
-      names_glue = "{.value}_{subset}"
-    ) %>%
-    select(
-      "analysis", all_of(paste0("n_", COUNTRY_SUBSETS)),
-      all_of(as.vector(outer(
-        paste0(ESTIMANDS, "_"),
-        COUNTRY_SUBSETS, paste0
-      )))
-    )
-}
-
 delta_label <- function(delta, scope) {
   sprintf("MI by country, delta %+d (%s)", delta, scope)
 }
@@ -253,5 +218,5 @@ run_delta_analyses <- function(datasets_country) {
     bind_rows()
 }
 
-#6. Executed statements -----
-# None (sourced by 12_multiple_imputation.R).
+# 6. Executed statements -----
+# None (sourced by 05_multiple_imputation.R).
