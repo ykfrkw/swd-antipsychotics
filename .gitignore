@@ -1,0 +1,11 @@
+# Participant data are never shared (see README)
+R_SWD/data/
+R_SWD/outputs/
+*.xlsx
+!docs/data_dictionary.xlsx
+*.csv
+.Rhistory
+.RData
+.Rproj.user/
+.DS_Store
+.claude/

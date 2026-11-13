@@ -1,0 +1,257 @@
+#1. Copyright statement -----
+# Copyright (c) 2026 the SWD study authors. Released under the MIT License (see LICENSE).
+
+#2. Author -----
+# Author: SWD study authors (see LICENSE)
+# Date: 2026-11-13 (last revised)
+
+#3. File description -----
+# Purpose: Estimators and Rubin's-rules pooling for
+#          12_multiple_imputation.R: median SWD (stats::median; within-
+#          imputation variance from a nonparametric bootstrap), mean SWD,
+#          proportion accepting the current efficacy (SWD <= 40; pooled on
+#          the logit scale) and JP-vs-DE differences (mean: OLS with HC3
+#          SE; median: difference of country medians, country-stratified
+#          bootstrap), the delta-adjusted (MNAR) analyses, plus the
+#          eAppendix table formatting.
+# Inputs:  none (functions receive completed datasets)
+# Outputs: none (function definitions)
+# Depends: 09a_additional_descriptives_helpers.R (CONFIDENCE_LEVEL,
+#          ALL_COUNTRIES_LABEL), 12a_mi_helpers.R (apply_delta); tidyverse,
+#          sandwich (HC3), mice (pool.scalar)
+# Style:   r_script_style_guide.md (Tier B)
+
+#4. source() and library() -----
+# None: the calling script loads tidyverse and sources 00a_config.R and the
+# files listed under Depends.
+
+# Constants -----
+CURRENT_EFFICACY_SWD <- 40 # current antipsychotics: relapse 60% -> ~20%
+MEDIAN_BOOT_REPLICATES <- 500L
+MEDIAN_BOOT_SEED <- 20261115L
+LOGIT_CONTINUITY <- 0.5
+COUNTRY_SUBSETS <- c(ALL_COUNTRIES_LABEL, "DE", "JP")
+DIFFERENCE_SUBSET <- "JP minus DE"
+ESTIMAND_MEAN_DIFFERENCE <- "mean_difference_hc3"
+ESTIMAND_MEDIAN_DIFFERENCE <- "median_difference"
+DIFFERENCE_ESTIMANDS <- c(ESTIMAND_MEAN_DIFFERENCE, ESTIMAND_MEDIAN_DIFFERENCE)
+ESTIMAND_PCT_ACCEPTING <- "pct_accepting"
+ESTIMANDS <- c("median", "mean", ESTIMAND_PCT_ACCEPTING)
+# Delta shifts (SWD points) for the MNAR tipping-point analysis.
+DELTAS <- c(-20, -10, -5, 5, 10, 20)
+RESULTS_TABLE_DIGITS <- 1
+
+#5. Function definitions -----
+subset_country <- function(completed, subset_name) {
+  if (subset_name == ALL_COUNTRIES_LABEL) {
+    return(completed)
+  }
+  completed[completed$country == subset_name, ]
+}
+
+# Nonparametric bootstrap of the conventional median (even n: mean of the
+# two middle values); returns the MEDIAN_BOOT_REPLICATES bootstrap medians.
+bootstrap_medians <- function(values) {
+  resampled <- matrix(
+    values[sample.int(length(values), length(values) * MEDIAN_BOOT_REPLICATES,
+      replace = TRUE
+    )],
+    ncol = MEDIAN_BOOT_REPLICATES
+  )
+  apply(resampled, 2, stats::median)
+}
+
+# Logit of the proportion accepting with its delta-method variance. When no
+# or every respondent accepts (logit undefined), a 0.5 continuity correction
+# (Haldane-Anscombe) is added to both cells; the message records its use.
+estimate_logit_share <- function(is_accepting) {
+  n_accepting <- sum(is_accepting)
+  n_total <- length(is_accepting)
+  is_boundary <- n_accepting %in% c(0, n_total)
+  correction <- if (is_boundary) LOGIT_CONTINUITY else 0
+  if (is_boundary) {
+    message(
+      "Logit continuity correction applied (", n_accepting,
+      " of ", n_total, " accepting)."
+    )
+  }
+  accepting <- n_accepting + correction
+  rejecting <- n_total - n_accepting + correction
+  list(
+    estimate = log(accepting / rejecting),
+    variance = 1 / accepting + 1 / rejecting
+  )
+}
+
+# One row per subset x estimand: estimate Q and its within variance U, on
+# the scale used for pooling (logit for the proportion).
+estimate_subset <- function(completed, subset_name) {
+  swd <- subset_country(completed, subset_name)$swd
+  n_subset <- length(swd)
+  accept_logit <- estimate_logit_share(swd <= CURRENT_EFFICACY_SWD)
+  tibble(
+    subset = subset_name,
+    estimand = ESTIMANDS,
+    estimate = c(stats::median(swd), mean(swd), accept_logit$estimate),
+    variance = c(
+      stats::var(bootstrap_medians(swd)),
+      stats::var(swd) / n_subset, accept_logit$variance
+    ),
+    n = n_subset
+  )
+}
+
+# Mean: OLS coefficient with HC3 (heteroskedasticity-robust) variance, as
+# the SWD spread differs by country. Median: difference of country medians,
+# bootstrap resampling within each country (stratified by country).
+estimate_country_difference <- function(completed) {
+  completed <- completed %>%
+    mutate(country = factor(.data$country, levels = c("DE", "JP")))
+  ols <- stats::lm(swd ~ country, data = completed)
+  robust_variance <- sandwich::vcovHC(ols, type = "HC3")
+  swd_jp <- completed$swd[completed$country == "JP"]
+  swd_de <- completed$swd[completed$country == "DE"]
+  boot_difference <- bootstrap_medians(swd_jp) - bootstrap_medians(swd_de)
+  tibble(
+    subset = DIFFERENCE_SUBSET,
+    estimand = DIFFERENCE_ESTIMANDS,
+    estimate = c(
+      stats::coef(ols)[["countryJP"]],
+      stats::median(swd_jp) - stats::median(swd_de)
+    ),
+    variance = c(
+      robust_variance["countryJP", "countryJP"],
+      stats::var(boot_difference)
+    ),
+    n = nrow(completed)
+  )
+}
+
+# The bootstrap seed is reset per dataset so each row is reproducible
+# regardless of the order in which the analyses are run.
+estimate_dataset <- function(completed, has_difference = TRUE) {
+  set.seed(MEDIAN_BOOT_SEED)
+  rows <- map(COUNTRY_SUBSETS, \(name) estimate_subset(completed, name))
+  if (has_difference) {
+    rows <- c(rows, list(estimate_country_difference(completed)))
+  }
+  bind_rows(rows)
+}
+
+estimate_datasets <- function(datasets, has_difference = TRUE) {
+  imap(datasets, \(completed, index) {
+    estimate_dataset(completed, has_difference) %>% mutate(imputation = index)
+  }) %>%
+    bind_rows()
+}
+
+back_transform <- function(estimand, value) {
+  if_else(estimand == ESTIMAND_PCT_ACCEPTING, 100 * stats::plogis(value), value)
+}
+
+# Rubin's rules with the Barnard-Rubin small-sample df; a single dataset
+# (complete case, best/worst case) reduces to a Wald interval.
+pool_estimates <- function(estimates, analysis) {
+  critical_level <- 1 - (1 - CONFIDENCE_LEVEL) / 2
+  estimates %>%
+    group_by(.data$subset, .data$estimand) %>%
+    group_modify(\(rows, keys) {
+      parameters <- if (keys$estimand %in% DIFFERENCE_ESTIMANDS) 2 else 1
+      is_single <- nrow(rows) == 1
+      pooled <- if (is_single) {
+        list(
+          qbar = rows$estimate, t = rows$variance,
+          df = rows$n - parameters, b = 0
+        )
+      } else {
+        mice::pool.scalar(rows$estimate, rows$variance,
+          n = rows$n[1],
+          k = parameters
+        )
+      }
+      # A zero total variance arises when every bootstrap and imputed median
+      # equals the same 5-point value (Germany); the interval is degenerate.
+      has_variance <- pooled$t > 0
+      half_width <- if (has_variance) {
+        stats::qt(critical_level, df = pooled$df) * sqrt(pooled$t)
+      } else {
+        0
+      }
+      tibble(
+        n = rows$n[1], m = nrow(rows), pooled_scale = pooled$qbar,
+        se = sqrt(pooled$t), between_variance = pooled$b, df = pooled$df,
+        estimate = back_transform(keys$estimand, pooled$qbar),
+        conf_low = back_transform(keys$estimand, pooled$qbar - half_width),
+        conf_high = back_transform(keys$estimand, pooled$qbar + half_width)
+      )
+    }) %>%
+    ungroup() %>%
+    mutate(analysis = analysis, .before = 1)
+}
+
+tally_imputation_medians <- function(estimates, analysis) {
+  estimates %>%
+    filter(.data$estimand == "median") %>%
+    count(.data$subset,
+      median_value = .data$estimate,
+      name = "n_imputations"
+    ) %>%
+    mutate(analysis = analysis, .before = 1)
+}
+
+format_interval <- function(estimate, conf_low, conf_high, digits) {
+  pattern <- paste0("%.", digits, "f [%.", digits, "f, %.", digits, "f]")
+  sprintf(pattern, estimate, conf_low, conf_high)
+}
+
+format_results_table <- function(pooled) {
+  digits_by_estimand <- set_names(rep(RESULTS_TABLE_DIGITS, 3), ESTIMANDS)
+  pooled %>%
+    filter(.data$subset %in% COUNTRY_SUBSETS) %>%
+    mutate(cell = format_interval(
+      .data$estimate, .data$conf_low,
+      .data$conf_high,
+      digits_by_estimand[.data$estimand]
+    )) %>%
+    select("analysis", "subset", "estimand", "n", "cell") %>%
+    pivot_wider(names_from = "estimand", values_from = "cell") %>%
+    pivot_wider(
+      names_from = "subset",
+      values_from = c("n", all_of(ESTIMANDS)),
+      names_glue = "{.value}_{subset}"
+    ) %>%
+    select(
+      "analysis", all_of(paste0("n_", COUNTRY_SUBSETS)),
+      all_of(as.vector(outer(
+        paste0(ESTIMANDS, "_"),
+        COUNTRY_SUBSETS, paste0
+      )))
+    )
+}
+
+delta_label <- function(delta, scope) {
+  sprintf("MI by country, delta %+d (%s)", delta, scope)
+}
+
+# Delta shifts applied to all non-completers, then to JP non-completers only.
+run_delta_analyses <- function(datasets_country) {
+  is_any_country <- \(country) rep(TRUE, length(country))
+  is_japan_only <- \(country) country == "JP"
+  scopes <- list(
+    `all non-completers` = is_any_country,
+    `JP non-completers only` = is_japan_only
+  )
+  delta_estimates <- imap(scopes, \(is_shifted_country, scope) {
+    map(DELTAS, \(delta) {
+      shifted <- apply_delta(datasets_country, delta, is_shifted_country)
+      estimate_datasets(shifted, has_difference = FALSE) %>%
+        pool_estimates(delta_label(delta, scope))
+    })
+  })
+  delta_estimates %>%
+    flatten() %>%
+    bind_rows()
+}
+
+#6. Executed statements -----
+# None (sourced by 12_multiple_imputation.R).
