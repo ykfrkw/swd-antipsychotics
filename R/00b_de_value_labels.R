@@ -1,21 +1,21 @@
 # -*- coding: UTF-8 -*-
-#1. Copyright statement -----
+# 1. Copyright statement -----
 # Copyright (c) 2026 the SWD study authors. Released under the MIT License (see LICENSE).
 
-#2. Author -----
+# 2. Author -----
 # Author: SWD study authors (see LICENSE)
-# Date: 2026-11-13 (last revised)
+# Date: 2026-11-14 (last revised)
 
-#3. File description -----
+# 3. File description -----
 # Purpose: German response labels of the DE survey version, used when the
 #          SoSci values export has no label for an item.
 # Inputs:  none
 # Outputs: none (defines DE_VALUE_LABELS, a named list of label vectors)
-# Depends: none (sourced after 00a_config.R)
+# Depends: none (sourced by 01_prepare_data.R after 00_config.R)
 # Style:   r_script_style_guide.md (Tier B)
 
-#4. source() and library() -----
-# None: the calling script loads tidyverse and sources 00a_config.R.
+# 4. source() and library() -----
+# None: the calling script loads tidyverse and sources 00_config.R.
 
 # Constants -----
 N_FAMILY_HISTORY_ITEMS <- 6L
@@ -171,8 +171,8 @@ DE_VALUE_LABELS <- c(
   )
 )
 
-#5. Function definitions -----
+# 5. Function definitions -----
 # None.
 
-#6. Executed statements -----
-# None (sourced by 01_analysis_data.R, 06_readable_export.R, 13_data_dictionary.R)
+# 6. Executed statements -----
+# None (sourced by 01_prepare_data.R).

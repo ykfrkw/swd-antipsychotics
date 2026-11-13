@@ -1,21 +1,21 @@
-#1. Copyright statement -----
+# 1. Copyright statement -----
 # Copyright (c) 2026 the SWD study authors. Released under the MIT License (see LICENSE).
 
-#2. Author -----
+# 2. Author -----
 # Author: SWD study authors (see LICENSE)
-# Date: 2026-11-13 (last revised)
+# Date: 2026-11-14 (last revised)
 
-#3. File description -----
+# 3. File description -----
 # Purpose: Shared configuration for every analysis script: project paths,
-#          survey codes, the staircase tree, the item maps and the
-#          respondent exclusion lists (read at run time from a local,
-#          untracked file).
-# Inputs:  R_SWD/data/exclusion_ids.csv (not shared; see README.md)
+#          survey codes, the staircase tree, the item maps, the expected size
+#          of the analysis set and the respondent exclusion lists (read at
+#          run time from a local, untracked file).
+# Inputs:  data/exclusion_ids.csv (not shared; see README.md)
 # Outputs: none (defines constants in the calling environment)
 # Depends: tidyverse; here (optional, falls back to the working directory)
 # Style:   r_script_style_guide.md (Tier B)
 
-#4. source() and library() -----
+# 4. source() and library() -----
 suppressPackageStartupMessages(library(tidyverse))
 
 # Constants -----
@@ -26,13 +26,14 @@ PROJECT_ROOT <- if (requireNamespace("here", quietly = TRUE)) {
 } else {
   normalizePath(getwd(), mustWork = TRUE)
 }
-PATH_UTILS <- file.path(PROJECT_ROOT, "R_SWD", "utils")
-PATH_RAW <- file.path(PROJECT_ROOT, "R_SWD", "data", "raw")
-PATH_OUT <- file.path(PROJECT_ROOT, "R_SWD", "data", "processed")
-PATH_LEGACY_OUT <- file.path(PROJECT_ROOT, "R_SWD", "outputs")
-REPORT_OUTPUT_DIR <- file.path(PATH_LEGACY_OUT, "report")
-EXCLUSION_IDS_PATH <- file.path(PROJECT_ROOT, "R_SWD", "data", "exclusion_ids.csv")
+PATH_R <- file.path(PROJECT_ROOT, "R")
+PATH_RAW <- file.path(PROJECT_ROOT, "data", "raw")
+PATH_PROCESSED <- file.path(PROJECT_ROOT, "data", "processed")
+PATH_OUTPUTS <- file.path(PROJECT_ROOT, "outputs")
+EXCLUSION_IDS_PATH <- file.path(PROJECT_ROOT, "data", "exclusion_ids.csv")
+INDIVIDUAL_PATH <- file.path(PATH_PROCESSED, "swd_individual.csv")
 COUNTRY_CODES <- c("JP", "DE")
+RESPONDENT_KEY <- c("country", "respondent_id")
 
 NA_CODE <- -9L
 YES <- 1L
@@ -221,7 +222,6 @@ DEMO_MAP <- list(
     ae_interference = "DE15",
     ever_used_antipsychotic = "DE16",
     randomized_drug = "RA01",
-    # TODO: Confirm whether SW70_01 should also be retained for DE free-text export.
     free_text_no_value_at_zero = "SW69_01"
   )
 )
@@ -236,17 +236,22 @@ TEST_KEYWORD_PATTERN <- "(?i)(test|テスト|てすと|tesuto|dummy|ダミー|sa
 ANALYSIS_N_TOTAL <- 225L
 ANALYSIS_N_DE <- 99L
 ANALYSIS_N_JP <- 126L
-# Staircase outcomes for which an SWD value is determined.
-DETERMINABLE_STATUSES <- c("completed", "never_willing", "always_willing")
-
 # Relapse-rate reductions (percentage points) offered by the staircase.
 SWD_RATE_GRID <- seq(0, 60, by = 5)
 # Staircase outcomes with a usable SWD value (never willing is SWD = 60).
 USABLE_SWD_STATUSES <- c("completed", "always_willing", "never_willing")
-# The same set without never willing (sensitivity analysis, Figure 2).
+# The same set without never willing (sensitivity analysis).
 USABLE_SWD_STATUSES_EXCLUDING_NEVER <- c("completed", "always_willing")
+# SWD range and staircase step (percentage points of relapse rate).
+SWD_FLOOR <- 0
+SWD_CEILING <- 60
+SWD_STEP <- 5
+CONFIDENCE_LEVEL <- 0.95
+ALL_COUNTRIES_LABEL <- "All"
+PRIMARY_SPECIFICATION <- "primary_including_never_willing"
+EXCLUDING_NEVER_SPECIFICATION <- "sensitivity_excluding_never_willing"
 
-#5. Function definitions -----
+# 5. Function definitions -----
 # Respondent IDs are personal data, so they live in an untracked file with
 # columns list_name, country, respondent_id (all read as character).
 read_exclusion_ids <- function(path = EXCLUSION_IDS_PATH) {
@@ -270,8 +275,8 @@ exclusion_ids_by_country <- function(exclusion_ids, list_name) {
   ids_by_country
 }
 
-#6. Executed statements -----
-# None besides loading the exclusion lists (sourced by every analysis script).
+# 6. Executed statements -----
+# Only the exclusion lists are loaded (this file is sourced by every script).
 EXCLUSION_IDS <- read_exclusion_ids()
 
 # Test respondents identified by ID (in addition to the keyword search).

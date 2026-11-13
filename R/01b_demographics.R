@@ -1,22 +1,22 @@
-#1. Copyright statement -----
+# 1. Copyright statement -----
 # Copyright (c) 2026 the SWD study authors. Released under the MIT License (see LICENSE).
 
-#2. Author -----
+# 2. Author -----
 # Author: SWD study authors (see LICENSE)
-# Date: 2026-11-13 (last revised)
+# Date: 2026-11-14 (last revised)
 
-#3. File description -----
+# 3. File description -----
 # Purpose: Harmonize the JP and DE demographic items into one table: value
 #          labels, standardized factors and ordinal scores, FIBSER total.
 # Inputs:  none (works on the list returned by load_raw_data())
 # Outputs: none (function definitions)
-# Depends: 00a_config.R (DEMO_MAP, AGE_LEVELS, SEX_LEVELS, DRUG_TRACKS,
+# Depends: 00_config.R (DEMO_MAP, AGE_LEVELS, SEX_LEVELS, DRUG_TRACKS,
 #          ADDITIONAL_DEMO_FIELDS, NA_CODE), 00b_de_value_labels.R
 #          (DE_VALUE_LABELS); tidyverse
 # Style:   r_script_style_guide.md (Tier B)
 
-#4. source() and library() -----
-# None: the calling script loads tidyverse and sources 00a_config.R and
+# 4. source() and library() -----
+# None: the calling script loads tidyverse and sources 00_config.R and
 # 00b_de_value_labels.R.
 
 # Constants -----
@@ -31,7 +31,7 @@ ONSET_AGE_GROUP_LEVELS <- c(
 FIBSER_MIN_CODE <- 1L
 FIBSER_MAX_CODE <- 7L
 
-#5. Function definitions -----
+# 5. Function definitions -----
 get_column_or_na <- function(survey_data, column_name) {
   is_missing_column <- is.null(column_name) || is.na(column_name) ||
     !column_name %in% names(survey_data)
@@ -275,5 +275,5 @@ harmonize_demographics <- function(raw) {
   )
 }
 
-#6. Executed statements -----
-# None (sourced by 01_analysis_data.R).
+# 6. Executed statements -----
+# None (sourced by 01_prepare_data.R).
