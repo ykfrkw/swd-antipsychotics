@@ -236,13 +236,15 @@ TEST_KEYWORD_PATTERN <- "(?i)(test|テスト|てすと|tesuto|dummy|ダミー|sa
 ANALYSIS_N_TOTAL <- 225L
 ANALYSIS_N_DE <- 99L
 ANALYSIS_N_JP <- 126L
-# Relapse-rate reductions (percentage points) offered by the staircase.
+# One-year relapse rates on the drug (%) asked in the staircase.
 SWD_RATE_GRID <- seq(0, 60, by = 5)
 # Staircase outcomes with a usable SWD value (never willing is SWD = 60).
 USABLE_SWD_STATUSES <- c("completed", "always_willing", "never_willing")
 # The same set without never willing (sensitivity analysis).
 USABLE_SWD_STATUSES_EXCLUDING_NEVER <- c("completed", "always_willing")
-# SWD range and staircase step (percentage points of relapse rate).
+# SWD range and staircase step (percentage points). SWD_CEILING is the
+# untreated relapse rate stated in every question (60 of 100), so the SWD
+# equals SWD_CEILING minus the highest relapse rate still accepted.
 SWD_FLOOR <- 0
 SWD_CEILING <- 60
 SWD_STEP <- 5

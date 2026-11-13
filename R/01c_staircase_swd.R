@@ -12,7 +12,7 @@
 #          the SWD to the harmonized demographics (one row per respondent).
 # Inputs:  none (works on the raw survey data from load_raw_data())
 # Outputs: none (function definitions)
-# Depends: 00_config.R (STAIRCASE_TREE, STATUS_LEVELS, SWD_RATE_GRID,
+# Depends: 00_config.R (STAIRCASE_TREE, STATUS_LEVELS, SWD_RATE_GRID, SWD_CEILING,
 #          SWD_NODES_BY_COUNTRY, DRUG_TRACKS, ADDITIONAL_DEMO_FIELDS, YES,
 #          NO); tidyverse
 # Style:   r_script_style_guide.md (Tier B)
@@ -52,6 +52,40 @@ swd_result <- function(threshold_pct, swd, status, n_visited, is_non_monotone) {
     threshold_pct = threshold_pct, swd = swd, status = status,
     n_visited = n_visited, is_non_monotone = is_non_monotone
   )
+}
+
+# Every terminal of STAIRCASE_TREE, with the rates answered yes on its path.
+list_staircase_terminals <- function(node = FIRST_STAIRCASE_NODE, yes_rates = numeric()) {
+  tree_node <- STAIRCASE_TREE[[node]]
+  rate <- as.numeric(node)
+  branches <- list(yes = c(yes_rates, rate), no = yes_rates)
+  imap(branches, function(branch_yes_rates, answer) {
+    next_step <- tree_node[[answer]]
+    if (!is.list(next_step)) {
+      return(list_staircase_terminals(next_step, branch_yes_rates))
+    }
+    list(list(
+      status = next_step$terminal, swd = next_step$swd,
+      max_yes_rate = if (length(branch_yes_rates) == 0) NA_real_ else max(branch_yes_rates)
+    ))
+  }) %>%
+    flatten()
+}
+
+# The SWD at each terminal is the untreated relapse rate (SWD_CEILING) minus
+# the highest relapse rate the respondent still accepted; never willing (no
+# rate accepted, not even 0%) is set to SWD_CEILING.
+check_staircase_tree <- function() {
+  terminals <- list_staircase_terminals()
+  for (terminal in terminals) {
+    expected_swd <- if (is.na(terminal$max_yes_rate)) {
+      SWD_CEILING
+    } else {
+      SWD_CEILING - terminal$max_yes_rate
+    }
+    stopifnot(terminal$swd == expected_swd)
+  }
+  invisible(TRUE)
 }
 
 # The staircase starts at a 0% relapse rate; each answer (YES = would take

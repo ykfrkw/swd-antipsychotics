@@ -29,6 +29,76 @@ are not part of the code either. The pipeline reads them from a local file,
 | `country` | `JP` or `DE` |
 | `respondent_id` | SoSci Survey `CASE` number |
 
+## How the SWD is derived
+
+Each respondent was randomised (`RA01`) to one drug: risperidone,
+aripiprazole or olanzapine. They then answered a series of yes/no
+questions of this form, with a different relapse rate *x* each time:
+
+> Suppose that taking [drug] meant that *x* of 100 patients with stable
+> schizophrenia would relapse within one year, compared with 60 of 100
+> without treatment. Considering the side effects and costs of [drug],
+> would you take it?
+
+The untreated relapse rate is always 60 of 100 (`SWD_CEILING` in
+`R/00_config.R`). The rates *x* on the drug run from 0 to 60 in steps of 5
+(`SWD_RATE_GRID`). The questions follow a staircase: the first asks about
+*x* = 0, and each answer selects the next *x* (bisection), so a respondent
+answers at most five questions. The tree is `STAIRCASE_TREE` in
+`R/00_config.R`:
+
+```
+x = 0  ── no ──> never willing (SWD = 60)
+  └ yes ─> x = 30
+            ├ yes ─> x = 45
+            │         ├ yes ─> x = 55
+            │         │         ├ yes ─> x = 60 ── yes: always willing (SWD = 0) / no: SWD = 5
+            │         │         └ no ──> x = 50 ── yes: SWD = 10 / no: SWD = 15
+            │         └ no ──> x = 35
+            │                   ├ yes ─> x = 40 ── yes: SWD = 20 / no: SWD = 25
+            │                   └ no ──> SWD = 30
+            └ no ──> x = 15
+                      ├ yes ─> x = 25
+                      │         ├ yes ─> SWD = 35
+                      │         └ no ──> x = 20 ── yes: SWD = 40 / no: SWD = 45
+                      └ no ──> x = 5
+                                ├ yes ─> x = 10 ── yes: SWD = 50 / no: SWD = 55
+                                └ no ──> SWD = 60
+```
+
+The SWD is the smallest reduction in the one-year relapse rate
+(percentage points) for which the respondent would take the drug:
+
+**SWD = 60 − (highest relapse rate *x* answered "yes")**
+
+Example: yes at 0, yes at 30, no at 45, no at 35. The highest accepted
+rate is 30, so the SWD is 60 − 30 = 30. The respondent would take the
+drug if it lowered relapse from 60 to 30 of 100 (a reduction of 30
+points), but not from 60 to 35 (a reduction of 25).
+
+Status of each respondent (`status_*` columns, `compute_swd()` in
+`R/01c_staircase_swd.R`):
+
+| Status | Pattern | SWD |
+|---|---|---|
+| `completed` | reached an end of the tree | 5–60, by the formula |
+| `always_willing` | yes even at *x* = 60 (no benefit at all) | 0 |
+| `never_willing` | no even at *x* = 0 (relapse prevented completely) | 60 (set to the maximum) |
+| `incomplete` | stopped part-way | missing |
+| `no_response` | did not answer the first question | missing |
+
+The primary analyses include never-willing respondents with SWD = 60; the
+sensitivity analyses exclude them. Respondents with a missing SWD are not
+in the analysis set; the multiple-imputation sensitivity analysis (step 05)
+imputes their SWD.
+
+`check_staircase_tree()` verifies, at every run, that each end of the tree
+satisfies the formula above. `check_compute_swd()` checks that typical
+answer patterns give the expected SWD and status.
+Answers that are not monotone (a "yes" at a higher rate after a "no" at a
+lower one) do not change the path; they are counted in
+`staircase_non_monotone.csv`.
+
 ## Layout
 
 ```

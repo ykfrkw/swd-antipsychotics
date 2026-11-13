@@ -46,6 +46,7 @@ source(file.path(PATH_R, "01c_staircase_swd.R"))
 
 # 5. Function definitions -----
 prepare_analysis_data <- function() {
+  check_staircase_tree()
   check_compute_swd()
   fs::dir_create(PATH_PROCESSED)
   raw_data <- load_raw_data()
