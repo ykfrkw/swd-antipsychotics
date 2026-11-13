@@ -4,6 +4,14 @@ Analysis code for a cross-sectional survey (Germany and Japan, 2026) that
 estimated the Smallest Worthwhile Difference (SWD) of antipsychotics for
 schizophrenia relapse prevention with the benefit–harm trade-off method.
 
+This repository contains the analysis only: every number in the manuscript
+and its eAppendix is computed here and written as a plain numeric CSV.
+Formatting of tables (rounding, labels, Word/Excel layout) is not part of
+the code. The earlier full pipeline, which also produced the formatted
+tables, readable exports and the data-dictionary generator, is preserved at
+the git tag `full-pipeline-2026-11-13`; this version reproduces the same
+numbers.
+
 ## Data availability
 
 Individual participant data are **not** included and will not be shared.
@@ -13,7 +21,7 @@ code can be read and re-used with data of the same structure.
 
 The respondent exclusion lists are participant-level information, so they
 are not part of the code either. The pipeline reads them from a local file,
-`R_SWD/data/exclusion_ids.csv` (not shared), with three character columns:
+`data/exclusion_ids.csv` (not shared), with three character columns:
 
 | Column | Content |
 |---|---|
@@ -25,53 +33,87 @@ are not part of the code either. The pipeline reads them from a local file,
 
 ```
 swd-antipsychotics.Rproj   RStudio project (sets the working directory)
-.lintr                     lintr configuration (style guide naming rules)
-R_SWD/utils/               all analysis scripts
-R_SWD/data/raw/            SoSci Survey exports (not shared)
-R_SWD/data/processed/      derived data written by the pipeline (not shared)
-R_SWD/outputs/             analysis outputs (not shared)
+.lintr                     lintr configuration
+R/                         analysis scripts, run in numeric order
+data/raw/                  SoSci Survey exports (not shared, git-ignored)
+data/processed/            analysis data written by step 01 (git-ignored)
+data/exclusion_ids.csv     exclusion lists (not shared, git-ignored)
+outputs/                   numeric CSVs, figures, sessionInfo (git-ignored)
 docs/data_dictionary.xlsx
 ```
 
+`00_config.R` holds the paths, survey codes, the staircase tree, the item
+maps, the analysis constants and the exclusion lists; `00b_de_value_labels.R`
+holds the German response labels; `00c_analysis_set.R` defines the analysis
+set (n = 225) and the regression covariates shared by the later steps.
+Letter-suffixed files (`01a`, `05b`, ...) are helpers sourced by the entry
+script with the same number. Each entry script starts with an "Analysis"
+comment block that states the population, the estimand and the method.
+
 ## How to run
 
-Open `swd-antipsychotics.Rproj` in RStudio and source
-`R_SWD/utils/00_run_all.R`, or run from the repository root:
+Put the raw exports in `data/raw/` and the exclusion file in `data/`, open
+`swd-antipsychotics.Rproj`, or run from the repository root:
 
 ```
-Rscript R_SWD/utils/00_run_all.R
+Rscript R/00_run_all.R
 ```
 
-`00_run_all.R` runs every entry script below in order, each in a fresh R
-process, then the Python table formatter (set `SWD_PYTHON` to choose the
-Python executable). Each entry script can also be run on its own from the
-repository root, e.g. `Rscript R_SWD/utils/03_table1_by_country.R`, once
-the steps before it have written their inputs.
+This runs steps 01–07 in order, each in a fresh R process, and saves
+`outputs/sessionInfo.txt`. Each step can also be run on its own from the
+repository root (e.g. `Rscript R/03_regression.R`) once step 01 has written
+`data/processed/swd_individual.csv` (step 07 also needs
+`outputs/flow_counts.csv` from step 02).
 
-| Step | Entry script | Helpers | What it does | Outputs |
-|---|---|---|---|---|
-| 1 | `01_analysis_data.R` | `01a`–`01g` | Loads the raw exports, harmonises demographics, computes each respondent's SWD from the staircase, free text, test-respondent exclusion, summary table | `data/processed/swd_*.csv` |
-| 2 | `02_report_outputs.R` | `02a`–`02g` | Tables 1 and 2 by drug arm, SWD figures, univariable and LASSO regressions (linear and SWD > 40), conversions | `data/processed/`, `outputs/report/figure*` |
-| 3 | `03_table1_by_country.R` | `03a`–`03c` | Table 1 by country, Appendix Table S1, analysis-set counts | `outputs/report/` |
-| 4 | `04_table2_subgroups.R` | (`03a`, `03b`) | Table 2: SWD by subgroup | `outputs/report/` |
-| 5 | `05_table3_regression.R` | `05a` | Table 3 and Appendix Table S2 | `outputs/report/` |
-| 6 | `06_readable_export.R` | `06a`–`06d` | Human-readable per-respondent exports with checks | `data/processed/swd_readable_*.csv` |
-| 7 | `07_country_diagnostics.R` | `07a`, `07b` | Diagnostics of the DE vs JP SWD distributions | `data/processed/swd_country_diagnostics.*` |
-| 8 | `08_flow_diagram.R` | `08a`, `08b` | Participant flow diagram | `outputs/report/flow_diagram.*` |
-| 9 | `09_additional_descriptives.R` | `09a`, `09b` | SWD distribution descriptives, missing-data patterns, country-adjusted OLS | `outputs/r1_reviewer4/` |
-| 10 | `10_holm_adjustment.R` | – | Holm correction of the univariable p-values | `outputs/r1_reviewer1/` |
-| 11 | `11_interval_regression.R` | `11a` | Interval regression treating the staircase SWD as interval-censored | `outputs/r2_interval_regression/` |
-| 12 | `12_multiple_imputation.R` | `12a`–`12d` | Multiple imputation of missing SWD (predictive mean matching, m = 50, by country and pooled), delta-adjusted and best/worst-case sensitivity analyses, covariate imputation | `outputs/r2_reviewer5/` |
-| 13 | `13_data_dictionary.R` | `13a`, `13b` | Builds the data dictionary | `outputs/r2_reviewer5/data_dictionary.xlsx` |
-| 14 | `14_make_tables_xlsx.py` (Python) | – | Formats Tables 1–3, S1 and S2 as Excel workbooks | `outputs/report/*.xlsx` |
-| 15 | `15_fibser_never_willing.R` | – | Post hoc Mann–Whitney test of FIBSER total, never willing vs other analysed respondents, and FIBSER figures | `outputs/figures/` |
+| Step | Script | What it does |
+|---|---|---|
+| 01 | `01_prepare_data.R` (`01a`–`01c`) | Loads the raw exports, removes test respondents, harmonises demographics, derives each respondent's SWD from the staircase |
+| 02 | `02_descriptives.R` (`02a`, `02b`) | Participant flow, characteristics by country, SWD by subgroup, SWD distribution |
+| 03 | `03_regression.R` | Univariable and LASSO linear regressions of the SWD, logistic regression of SWD > 40, Holm adjustment |
+| 04 | `04_interval_regression.R` | Interval regression treating the SWD as interval-censored (not reported) |
+| 05 | `05_multiple_imputation.R` (`05a`–`05c`) | Multiple imputation of the missing SWD with delta-adjusted and best/worst-case analyses; multiple imputation of missing covariates |
+| 06 | `06_fibser_never_willing.R` | Post hoc Mann–Whitney test of the FIBSER total, never willing vs others |
+| 07 | `07_figures.R` | Figures 2 and 3 and the eAppendix 13 figure |
 
-`00a_config.R` holds the paths, survey codes, the staircase tree, the item
-maps and the exclusion lists (read from the local file above);
-`00b_de_value_labels.R` holds German response labels. Letter-suffixed files
-(`01a`, `02e`, ...) are helpers sourced by the entry script with the same
-number. Output folder names (`r1_reviewer4`, `r2_reviewer5`, ...) are kept
-as cited in the manuscript.
+## Where each reported number comes from
+
+All files are in `outputs/` unless stated otherwise.
+
+| Manuscript / eAppendix | Script | Output |
+|---|---|---|
+| Figure 2 (participant flow) and the flow counts in the Results | `02_descriptives.R` | `flow_counts.csv`; figure `figure2_flow_diagram.png` (`07_figures.R`) |
+| Table 1 (characteristics by country) | `02_descriptives.R` | `characteristics_by_country.csv` (`table == "table1"`); FIBSER total: `fibser_total_descriptives.csv` |
+| Results: current antipsychotic use, always / never willing counts | `02_descriptives.R` | `analysis_set_counts.csv` |
+| Table 2 (SWD by subgroup) and the median SWD in the Abstract and Results | `02_descriptives.R` | `swd_by_subgroup.csv` |
+| Results: SWD distribution (skewness, Shapiro–Wilk, excluding never willing) | `02_descriptives.R` | `swd_distribution.csv` |
+| Non-monotone staircase answers | `02_descriptives.R` | `staircase_non_monotone.csv` |
+| Figure 3 (SWD distribution with cumulative percentiles) | `07_figures.R` | `figure3_swd_distribution.png`, `figure3_swd_distribution_data.csv` |
+| Results: post hoc FIBSER comparison | `06_fibser_never_willing.R` | `fibser_never_willing_test.csv` |
+| eAppendix 8 (age and sex by country) and eAppendix 9 (further characteristics) | `02_descriptives.R` | `characteristics_by_country.csv` (`table == "table1"` / `"appendix9"`) |
+| eAppendix 11 (Table 3: linear regression, including never willing) | `03_regression.R` | `regression_linear.csv` (`specification == "primary_including_never_willing"`) |
+| eAppendix 12 section A (linear regression, excluding never willing) | `03_regression.R` | `regression_linear.csv` (`"sensitivity_excluding_never_willing"`) |
+| eAppendix 12 section B (logistic regression, SWD > 40) | `03_regression.R` | `regression_logistic_swd_gt40.csv` |
+| Holm-adjusted p-values (eAppendix 11 and 12) | `03_regression.R` | column `p_holm` of the two regression files |
+| eAppendix 13 (FIBSER total by willingness) | `07_figures.R` | `eappendix13_fibser_by_never_willing.png` |
+| eAppendix 14 and Results: imputation population (276, 51 missing, by country) | `05_multiple_imputation.R` | `mi_population_counts.csv` |
+| eAppendix 14 and Limitations: stage at which non-completers stopped, comprehension check | `05_multiple_imputation.R` | `mi_stop_stages.csv` |
+| eAppendix 14 Tables 14.1 and 14.2 (pooled median, mean, proportion accepting, Japan − Germany differences; delta, best and worst case) | `05_multiple_imputation.R` | `mi_pooled_estimates.csv` |
+| eAppendix 14 Table 14.3 (per-imputation medians) | `05_multiple_imputation.R` | `mi_per_imputation_medians.csv` |
+| eAppendix 14 Table 14.4 (covariate imputation vs complete case) | `05_multiple_imputation.R` | `mi_covariate_vs_complete_case.csv`, `mi_covariate_logged_events.csv` |
+| eAppendix 14: admissible range of respondents who stopped part-way | `05_multiple_imputation.R` | `mi_staircase_stopper_bounds.csv` |
+| eAppendix 15 (data dictionary) | – | `docs/data_dictionary.xlsx` (static) |
+| Interval regression (not reported) | `04_interval_regression.R` | `interval_regression_intercepts.csv`, `interval_regression_univariable.csv` |
+
+The free-text reasons listed in eAppendix 7 and 10 come from
+`data/processed/swd_free_text.csv` (written by step 01); they are quoted,
+not computed.
+
+## Reproducibility
+
+Seeds are constants in the scripts: 20240529 before each cross-validated
+LASSO, 20261113 for the outcome imputation, 20261114 for the covariate
+imputation and 20261115 for the bootstrap of the median. `00_run_all.R`
+writes `outputs/sessionInfo.txt`.
 
 ## Code style
 
@@ -79,15 +121,12 @@ All R files follow the authors' R script style guide: a six-section header
 (copyright, author, file description with purpose, inputs, outputs and
 dependencies, libraries, functions, executed statements), `{tidyverse}` with
 the `%>%` pipe, at most 300 lines per file and 100 characters per line.
-`{styler}` and `{lintr}` (configuration in `.lintr`) were run on every file.
+`{lintr}` (configuration in `.lintr`) was run on every file.
 
 ## Software
 
 R 4.5.1. Packages: tidyverse (dplyr, tidyr, readr, tibble, purrr, stringr,
-ggplot2), here, readxl, fs, glmnet, mice (3.19), sandwich, survival,
-flextable, officer, openxlsx, pdftools; gt is used for the HTML summary
-when installed. Python 3 with openpyxl for `14_make_tables_xlsx.py`. Seeds
-are fixed in the scripts; `sessionInfo()` is saved with the outputs.
+ggplot2), here, readxl, fs, glmnet, survival, mice (3.19), sandwich.
 
 ## Licence
 

@@ -1,6 +1,6 @@
 # Participant data are never shared (see README)
-R_SWD/data/
-R_SWD/outputs/
+data/
+outputs/
 *.xlsx
 !docs/data_dictionary.xlsx
 *.csv
