@@ -6,7 +6,7 @@
 # Date: 2026-11-14 (last revised)
 
 # 3. File description -----
-# Purpose: Multiple-imputation sensitivity analyses (eAppendix 14): impute
+# Purpose: Multiple-imputation sensitivity analyses: impute
 #          the missing SWD of the eligible starters, pool the mean and the
 #          proportion accepting with Rubin's rules and summarise the medians
 #          across imputations, with delta-adjusted and best / worst-case

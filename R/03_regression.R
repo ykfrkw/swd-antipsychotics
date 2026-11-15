@@ -6,7 +6,7 @@
 # Date: 2026-11-14 (last revised)
 
 # 3. File description -----
-# Purpose: Correlates of the SWD (eAppendix 11 and 12): univariable linear
+# Purpose: Correlates of the SWD: univariable linear
 #          regressions and a LASSO, primary and excluding never willing
 #          respondents; univariable logistic regressions and a logistic LASSO
 #          of SWD > 40; Holm-adjusted p-values.

@@ -7,7 +7,7 @@
 
 # 3. File description -----
 # Purpose: Descriptive results: participant flow counts (Figure 2),
-#          participant characteristics (Table 1, eAppendix 8 and 9), SWD by
+#          participant characteristics (Table 1 and further characteristics), SWD by
 #          subgroup (Table 2), the shape of the SWD distribution and the
 #          FIBSER totals cited in the text.
 # Inputs:  data/processed/swd_individual.csv; data/raw/ (screening items)

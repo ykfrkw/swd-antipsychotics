@@ -4,8 +4,8 @@ Analysis code for a cross-sectional survey (Germany and Japan, 2026) that
 estimated the Smallest Worthwhile Difference (SWD) of antipsychotics for
 schizophrenia relapse prevention with the benefit–harm trade-off method.
 
-This repository contains the analysis only: every number in the manuscript
-and its eAppendix is computed here and written as a plain numeric CSV.
+This repository contains the analysis only: every reported number is computed
+here and written as a plain numeric CSV.
 Formatting of tables (rounding, labels, Word/Excel layout) is not part of
 the code. The earlier full pipeline, which also produced the formatted
 tables, readable exports and the data-dictionary generator, is preserved at
@@ -161,35 +161,31 @@ repository root (e.g. `Rscript R/03_regression.R`) once step 01 has written
 | 04 | `04_interval_regression.R` | Interval regression treating the SWD as interval-censored (not reported) |
 | 05 | `05_multiple_imputation.R` (`05a`–`05c`) | Multiple imputation of the missing SWD (predictive mean matching with bootstrap of the observed cases) with delta-adjusted and best/worst-case analyses; multiple imputation of missing covariates |
 | 06 | `06_fibser_never_willing.R` | Post hoc Mann–Whitney test of the FIBSER total, never willing vs others |
-| 07 | `07_figures.R` | Figures 2 and 3 and the eAppendix 13 figure |
+| 07 | `07_figures.R` | Figures 2 and 3 and the FIBSER-by-willingness figure |
 
-## Where each reported number comes from
+## Outputs
 
-All files are in `outputs/` unless stated otherwise.
+All files are in `outputs/`.
 
-| Manuscript / eAppendix | Script | Output |
+| Content | Script | Output |
 |---|---|---|
-| Figure 2 (participant flow) and the flow counts in the Results | `02_descriptives.R` | `flow_counts.csv`; figure `figure2_flow_diagram.png` (`07_figures.R`) |
-| Table 1 (characteristics by country) | `02_descriptives.R` | `characteristics_by_country.csv` (`table == "table1"`); FIBSER total: `fibser_total_descriptives.csv` |
-| Results: current antipsychotic use, always / never willing counts | `02_descriptives.R` | `analysis_set_counts.csv` |
-| Table 2 (SWD by subgroup) and the median SWD in the Abstract and Results | `02_descriptives.R` | `swd_by_subgroup.csv` |
-| Results: SWD distribution (skewness, Shapiro–Wilk, excluding never willing) | `02_descriptives.R` | `swd_distribution.csv` |
+| Participant flow (Figure 2) | `02_descriptives.R`, `07_figures.R` | `flow_counts.csv`, `figure2_flow_diagram.png` |
+| Characteristics by country | `02_descriptives.R` | `characteristics_by_country.csv` (`table == "table1"` / `"further_characteristics"`), `fibser_total_descriptives.csv` |
+| Current antipsychotic use, always / never willing counts | `02_descriptives.R` | `analysis_set_counts.csv` |
+| SWD by subgroup | `02_descriptives.R` | `swd_by_subgroup.csv` |
+| SWD distribution (skewness, Shapiro–Wilk, excluding never willing) | `02_descriptives.R` | `swd_distribution.csv` |
 | Non-monotone staircase answers | `02_descriptives.R` | `staircase_non_monotone.csv` |
-| Figure 3 (SWD distribution with cumulative percentiles) | `07_figures.R` | `figure3_swd_distribution.png`, `figure3_swd_distribution_data.csv` |
-| Results: post hoc FIBSER comparison | `06_fibser_never_willing.R` | `fibser_never_willing_test.csv` |
-| eAppendix 8 (age and sex by country) and eAppendix 9 (further characteristics) | `02_descriptives.R` | `characteristics_by_country.csv` (`table == "table1"` / `"appendix9"`) |
-| eAppendix 11 (Table 3: linear regression, including never willing) | `03_regression.R` | `regression_linear.csv` (`specification == "primary_including_never_willing"`) |
-| eAppendix 12 section A (linear regression, excluding never willing) | `03_regression.R` | `regression_linear.csv` (`"sensitivity_excluding_never_willing"`) |
-| eAppendix 12 section B (logistic regression, SWD > 40) | `03_regression.R` | `regression_logistic_swd_gt40.csv` |
-| Holm-adjusted p-values (eAppendix 11 and 12) | `03_regression.R` | column `p_holm` of the two regression files |
-| eAppendix 13 (FIBSER total by willingness) | `07_figures.R` | `eappendix13_fibser_by_never_willing.png` |
-| eAppendix 14 and Results: imputation population (276, 51 missing, by country) | `05_multiple_imputation.R` | `mi_population_counts.csv` |
-| eAppendix 14 and Limitations: stage at which non-completers stopped, comprehension check | `05_multiple_imputation.R` | `mi_stop_stages.csv` |
-| eAppendix 14 Tables 14.1 and 14.2 (pooled median, mean, proportion accepting, Japan − Germany differences; delta, best and worst case) | `05_multiple_imputation.R` | `mi_pooled_estimates.csv` |
-| eAppendix 14 Table 14.3 (per-imputation medians) | `05_multiple_imputation.R` | `mi_per_imputation_medians.csv` |
-| eAppendix 14 Table 14.4 (covariate imputation vs complete case) | `05_multiple_imputation.R` | `mi_covariate_vs_complete_case.csv`, `mi_covariate_logged_events.csv` |
-| eAppendix 14: admissible range of respondents who stopped part-way | `05_multiple_imputation.R` | `mi_staircase_stopper_bounds.csv` |
-| eAppendix 15 (data dictionary) | – | `docs/data_dictionary.xlsx` (static) |
+| SWD distribution with cumulative percentages (Figure 3) | `07_figures.R` | `figure3_swd_distribution.png`, `figure3_swd_distribution_data.csv` |
+| Post hoc FIBSER comparison, never willing vs others | `06_fibser_never_willing.R`, `07_figures.R` | `fibser_never_willing_test.csv`, `fibser_by_never_willing.png` |
+| Linear regression, including / excluding never willing | `03_regression.R` | `regression_linear.csv` (`specification`) |
+| Logistic regression, SWD > 40 | `03_regression.R` | `regression_logistic_swd_gt40.csv` |
+| Holm-adjusted p-values | `03_regression.R` | column `p_holm` of the two regression files |
+| Imputation population and missing SWD by country | `05_multiple_imputation.R` | `mi_population_counts.csv` |
+| Stage at which non-completers stopped, comprehension check | `05_multiple_imputation.R` | `mi_stop_stages.csv` |
+| Median, mean, proportion accepting and Japan − Germany differences (complete case, imputation models, delta, best and worst case) | `05_multiple_imputation.R` | `mi_pooled_estimates.csv` |
+| Per-imputation medians | `05_multiple_imputation.R` | `mi_per_imputation_medians.csv` |
+| Covariate imputation vs complete case | `05_multiple_imputation.R` | `mi_covariate_vs_complete_case.csv`, `mi_covariate_logged_events.csv` |
+| Admissible range of respondents who stopped part-way | `05_multiple_imputation.R` | `mi_staircase_stopper_bounds.csv` |
 | Interval regression (not reported) | `04_interval_regression.R` | `interval_regression_intercepts.csv`, `interval_regression_univariable.csv` |
 
 ## Pooling of the imputed medians

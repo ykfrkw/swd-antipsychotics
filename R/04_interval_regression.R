@@ -27,7 +27,7 @@
 # Univariable interval regressions use the covariates of 03_regression.R
 # in the primary analysis set (available cases per covariate) and are
 # compared with the univariable OLS in direction and significance at p < 0.05.
-# Not reported in the manuscript or appendix.
+# Not reported.
 
 # 4. source() and library() -----
 suppressPackageStartupMessages(library(tidyverse))

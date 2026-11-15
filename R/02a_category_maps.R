@@ -7,9 +7,9 @@
 
 # 3. File description -----
 # Purpose: Category definitions of the descriptive tables (Table 1, Table 2,
-#          eAppendix 9): exact-match maps from the harmonized codes and the
-#          Japanese / German answer labels to the reported categories, and
-#          the category order.
+#          further characteristics): exact-match maps from the harmonized
+#          codes and the Japanese / German answer labels to the reported
+#          categories, and the category order.
 # Inputs:  none
 # Outputs: none (constant definitions)
 # Depends: none
@@ -118,16 +118,17 @@ OTHER_DRUGS <- c(
   "asenapine", "quetiapine", "clozapine", "haloperidol", "paliperidone",
   "brexpiprazole", "blonanserin", "perospirone", "lurasidone"
 )
-# Appendix order of the 12 drug-history items.
+# Display order of the 12 drug-history items.
 ALL_DRUGS <- c(
   "asenapine", "aripiprazole", "olanzapine", "quetiapine", "clozapine",
   "haloperidol", "paliperidone", "brexpiprazole", "blonanserin", "perospirone",
   "risperidone", "lurasidone"
 )
-FAMILY_HISTORY_APPENDIX <- c("bipolar", "depression", "anxiety", "ocd", "developmental")
+FAMILY_HISTORY_FURTHER <- c("bipolar", "depression", "anxiety", "ocd", "developmental")
 
-# Categorical rows of Table 1 (table = "table1") and eAppendix 9
-# (table = "appendix9"): column of the individual table and its category map.
+# Categorical rows of Table 1 (table = "table1") and the further
+# characteristics (table = "further_characteristics"): column of the
+# individual table and its category map.
 # The category order is the order of first appearance in the map, except
 # where `levels` is given.
 CATEGORICAL_VARIABLES <- bind_rows(
@@ -148,15 +149,18 @@ CATEGORICAL_VARIABLES <- bind_rows(
     label_map = list(DRUG_HISTORY_MAP)
   ),
   tibble(
-    table = "appendix9", variable = paste0("family_history_", FAMILY_HISTORY_APPENDIX),
+    table = "further_characteristics",
+    variable = paste0("family_history_", FAMILY_HISTORY_FURTHER),
     label_map = list(FAMILY_HISTORY_MAP)
   ),
   tibble(
-    table = "appendix9", variable = paste0("drug_history_", ALL_DRUGS),
+    table = "further_characteristics",
+    variable = paste0("drug_history_", ALL_DRUGS),
     label_map = list(DRUG_HISTORY_MAP)
   ),
   tibble(
-    table = "appendix9", variable = c("ae_duration", "ae_severity", "ae_interference"),
+    table = "further_characteristics",
+    variable = c("ae_duration", "ae_severity", "ae_interference"),
     label_map = list(AE_DURATION_MAP, AE_SEVERITY_MAP, AE_INTERFERENCE_MAP)
   )
 )

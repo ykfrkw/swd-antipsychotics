@@ -8,12 +8,12 @@
 # 3. File description -----
 # Purpose: Figures: participant flow (Figure 2), distribution of the SWD
 #          with cumulative percentiles (Figure 3) and FIBSER total by
-#          willingness to take the drug (eAppendix 13). Plain ggplot2.
+#          willingness to take the drug. Plain ggplot2.
 # Inputs:  data/processed/swd_individual.csv, outputs/flow_counts.csv
 #          (from 02_descriptives.R)
 # Outputs: outputs/figure2_flow_diagram.png, outputs/figure3_swd_distribution.png,
 #          outputs/figure3_swd_distribution_data.csv,
-#          outputs/eappendix13_fibser_by_never_willing.png
+#          outputs/fibser_by_never_willing.png
 # Depends: 00_config.R, 00c_analysis_set.R; tidyverse
 #
 # Run from the project root:  Rscript R/07_figures.R
@@ -64,7 +64,7 @@ run_figures <- function() {
     "figure3_swd_distribution.png",
     width = 7, height = 4.5
   )
-  save_figure(plot_fibser_by_group(analysis), "eappendix13_fibser_by_never_willing.png",
+  save_figure(plot_fibser_by_group(analysis), "fibser_by_never_willing.png",
     width = 8, height = 7
   )
 }
