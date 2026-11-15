@@ -1,5 +1,5 @@
 # 1. Copyright statement -----
-# Copyright (c) 2026 the SWD study authors. Released under the MIT License (see LICENSE).
+# Copyright (c) 2026 Yuki Furukawa. Released under the MIT License (see LICENSE).
 
 # 2. Author -----
 # Author: SWD study authors (see LICENSE)
@@ -15,7 +15,6 @@
 #          outputs/figure3_swd_distribution_data.csv,
 #          outputs/eappendix13_fibser_by_never_willing.png
 # Depends: 00_config.R, 00c_analysis_set.R; tidyverse
-# Style:   r_script_style_guide.md (Tier B)
 #
 # Run from the project root:  Rscript R/07_figures.R
 #

@@ -1,5 +1,5 @@
 # 1. Copyright statement -----
-# Copyright (c) 2026 the SWD study authors. Released under the MIT License (see LICENSE).
+# Copyright (c) 2026 Yuki Furukawa. Released under the MIT License (see LICENSE).
 
 # 2. Author -----
 # Author: SWD study authors (see LICENSE)
@@ -14,7 +14,6 @@
 # Outputs: outputs/interval_regression_intercepts.csv,
 #          outputs/interval_regression_univariable.csv
 # Depends: 00_config.R, 00c_analysis_set.R; tidyverse, survival
-# Style:   r_script_style_guide.md (Tier B)
 #
 # Run from the project root:  Rscript R/04_interval_regression.R
 #

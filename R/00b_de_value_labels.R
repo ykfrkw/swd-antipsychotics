@@ -1,6 +1,6 @@
 # -*- coding: UTF-8 -*-
 # 1. Copyright statement -----
-# Copyright (c) 2026 the SWD study authors. Released under the MIT License (see LICENSE).
+# Copyright (c) 2026 Yuki Furukawa. Released under the MIT License (see LICENSE).
 
 # 2. Author -----
 # Author: SWD study authors (see LICENSE)
@@ -12,7 +12,6 @@
 # Inputs:  none
 # Outputs: none (defines DE_VALUE_LABELS, a named list of label vectors)
 # Depends: none (sourced by 01_prepare_data.R after 00_config.R)
-# Style:   r_script_style_guide.md (Tier B)
 
 # 4. source() and library() -----
 # None: the calling script loads tidyverse and sources 00_config.R.

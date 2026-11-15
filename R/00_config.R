@@ -1,5 +1,5 @@
 # 1. Copyright statement -----
-# Copyright (c) 2026 the SWD study authors. Released under the MIT License (see LICENSE).
+# Copyright (c) 2026 Yuki Furukawa. Released under the MIT License (see LICENSE).
 
 # 2. Author -----
 # Author: SWD study authors (see LICENSE)
@@ -13,7 +13,6 @@
 # Inputs:  data/exclusion_ids.csv (not shared; see README.md)
 # Outputs: none (defines constants in the calling environment)
 # Depends: tidyverse; here (optional, falls back to the working directory)
-# Style:   r_script_style_guide.md (Tier B)
 
 # 4. source() and library() -----
 suppressPackageStartupMessages(library(tidyverse))

@@ -1,5 +1,5 @@
 # 1. Copyright statement -----
-# Copyright (c) 2026 the SWD study authors. Released under the MIT License (see LICENSE).
+# Copyright (c) 2026 Yuki Furukawa. Released under the MIT License (see LICENSE).
 
 # 2. Author -----
 # Author: SWD study authors (see LICENSE)
@@ -14,7 +14,6 @@
 # Outputs: none (function definitions)
 # Depends: 00_config.R (PATH_RAW, NA_CODE, EXPLICIT_TEST_IDS,
 #          TEST_KEYWORD_PATTERN); tidyverse, readxl, fs
-# Style:   r_script_style_guide.md (Tier B)
 
 # 4. source() and library() -----
 # None: the calling script loads tidyverse and sources 00_config.R.

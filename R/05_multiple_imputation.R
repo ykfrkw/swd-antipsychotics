@@ -1,5 +1,5 @@
 # 1. Copyright statement -----
-# Copyright (c) 2026 the SWD study authors. Released under the MIT License (see LICENSE).
+# Copyright (c) 2026 Yuki Furukawa. Released under the MIT License (see LICENSE).
 
 # 2. Author -----
 # Author: SWD study authors (see LICENSE)
@@ -20,7 +20,6 @@
 # Depends: 00_config.R, 00c_analysis_set.R, 01a_raw_data.R,
 #          05a_mi_population.R, 05b_mi_outcome.R, 05c_mi_pooling.R;
 #          tidyverse, mice, sandwich
-# Style:   r_script_style_guide.md (Tier B)
 #
 # Run from the project root:  Rscript R/05_multiple_imputation.R
 #

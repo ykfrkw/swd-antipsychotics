@@ -1,5 +1,5 @@
 # 1. Copyright statement -----
-# Copyright (c) 2026 the SWD study authors. Released under the MIT License (see LICENSE).
+# Copyright (c) 2026 Yuki Furukawa. Released under the MIT License (see LICENSE).
 
 # 2. Author -----
 # Author: SWD study authors (see LICENSE)
@@ -12,7 +12,6 @@
 # Inputs:  data/raw/ (SoSci exports), data/exclusion_ids.csv
 # Outputs: data/processed/ and outputs/ (see README.md), outputs/sessionInfo.txt
 # Depends: every script listed in ANALYSIS_SCRIPTS
-# Style:   r_script_style_guide.md (Tier B)
 #
 # Run from the project root:  Rscript R/00_run_all.R
 # (or open swd-antipsychotics.Rproj in RStudio and source this file).

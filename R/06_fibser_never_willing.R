@@ -1,5 +1,5 @@
 # 1. Copyright statement -----
-# Copyright (c) 2026 the SWD study authors. Released under the MIT License (see LICENSE).
+# Copyright (c) 2026 Yuki Furukawa. Released under the MIT License (see LICENSE).
 
 # 2. Author -----
 # Author: SWD study authors (see LICENSE)
@@ -11,7 +11,6 @@
 # Inputs:  data/processed/swd_individual.csv
 # Outputs: outputs/fibser_never_willing_test.csv
 # Depends: 00_config.R, 00c_analysis_set.R; tidyverse
-# Style:   r_script_style_guide.md (Tier B)
 #
 # Run from the project root:  Rscript R/06_fibser_never_willing.R
 #

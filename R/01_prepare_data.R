@@ -1,5 +1,5 @@
 # 1. Copyright statement -----
-# Copyright (c) 2026 the SWD study authors. Released under the MIT License (see LICENSE).
+# Copyright (c) 2026 Yuki Furukawa. Released under the MIT License (see LICENSE).
 
 # 2. Author -----
 # Author: SWD study authors (see LICENSE)
@@ -17,7 +17,6 @@
 #          respondents removed)
 # Depends: 00_config.R, 00b_de_value_labels.R, 01a_raw_data.R,
 #          01b_demographics.R, 01c_staircase_swd.R; tidyverse, readxl, fs
-# Style:   r_script_style_guide.md (Tier B)
 #
 # Run from the project root:  Rscript R/01_prepare_data.R
 #
