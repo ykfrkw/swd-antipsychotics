@@ -7,12 +7,13 @@
 
 # 3. File description -----
 # Purpose: Multiple-imputation sensitivity analyses (eAppendix 14): impute
-#          the missing SWD of the eligible starters, pool median / mean /
-#          proportion accepting with Rubin's rules, with delta-adjusted and
-#          best / worst-case analyses; multiple imputation of missing
-#          covariates for the multivariable linear regression.
+#          the missing SWD of the eligible starters, pool the mean and the
+#          proportion accepting with Rubin's rules and summarise the medians
+#          across imputations, with delta-adjusted and best / worst-case
+#          analyses; multiple imputation of missing covariates for the
+#          multivariable linear regression.
 # Inputs:  data/processed/swd_individual.csv; data/raw/data_swd_{ja,de}*.xlsx
-#          (newest; comprehension items, staircase answers)
+#          (pinned export; comprehension items, staircase answers)
 # Outputs: outputs/mi_population_counts.csv, mi_stop_stages.csv,
 #          mi_staircase_stopper_bounds.csv, mi_pooled_estimates.csv,
 #          mi_per_imputation_medians.csv, mi_covariate_vs_complete_case.csv,
@@ -29,19 +30,23 @@
 # comprehension questions, failed them, gave no trade-off answer, or stopped
 # part-way through the staircase). Only country and the randomized drug were
 # collected before the SWD questions, so they are the only predictors.
-# The SWD is imputed 50 times by predictive mean matching (5 donors, donors
-# drawn from an approximate Bayesian bootstrap), so only observed 5-point
-# values are imputed; respondents who stopped part-way only receive values
-# compatible with their answers. Model A imputes within each country with
+# The SWD is imputed 50 times by predictive mean matching with bootstrap of
+# the observed cases (5 donors), so only observed 5-point values are
+# imputed; respondents who stopped part-way only receive values compatible
+# with their answers. Model A imputes within each country with
 # the drug as predictor; Model B imputes in the pooled sample with country
 # and drug as main effects; Model A is repeated without the 15 respondents
-# who failed the comprehension questions. Per dataset: median (bootstrap
-# variance, 500 resamples), mean, and proportion accepting the drug at its
-# current efficacy (SWD <= 40, logit scale), overall and by country, and the
-# Japan minus Germany mean (OLS, HC3 variance) and median differences;
-# pooled with Rubin's rules (Barnard-Rubin df). Departures from missing at
-# random: imputed values of non-completers shifted by delta (rounded to 5,
-# kept within the admissible range), for all or only Japanese non-completers;
+# who failed the comprehension questions. Per dataset: median, mean, and
+# proportion accepting the drug at its current efficacy (SWD <= 40, logit
+# scale), overall and by country, and the Japan minus Germany mean (OLS, HC3
+# variance) and median differences. Mean and proportion are pooled with
+# Rubin's rules (Barnard-Rubin df); Rubin's rules are not valid for medians
+# of discrete 5-point data, so a median is reported as the median of the
+# per-imputation medians (or differences) with their range, without a
+# standard error or interval. Departures from missing at random: imputed
+# values of non-completers shifted by delta (rounded half up to 5, kept
+# within the admissible range), for all or only Japanese non-completers,
+# with the same estimands including the Japan minus Germany differences;
 # best case (SWD 0 or the lower bound) and worst case (60 or the upper bound).
 # Covariate MI: the 12-covariate multivariable OLS of the SWD in the analysis
 # set, complete cases (n = 212) vs mice default methods (m = 50, 20
