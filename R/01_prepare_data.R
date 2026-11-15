@@ -13,8 +13,7 @@
 # Inputs:  data/raw/ (SoSci Survey exports: data, values, variables for JP
 #          and DE); data/exclusion_ids.csv
 # Outputs: data/processed/swd_individual.csv (one row per respondent),
-#          swd_free_text.csv (open answers), swd_excluded.csv (test
-#          respondents removed)
+#          swd_excluded.csv (test respondents removed)
 # Depends: 00_config.R, 00b_de_value_labels.R, 01a_raw_data.R,
 #          01b_demographics.R, 01c_staircase_swd.R; tidyverse, readxl, fs
 #
@@ -51,19 +50,16 @@ prepare_analysis_data <- function() {
   raw_data <- load_raw_data()
   demographics_all <- harmonize_demographics(raw_data)
   swd_all <- apply_swd_per_person(raw_data$jp_data, raw_data$de_data)
-  free_text_all <- make_free_text_table(raw_data)
-  exclusions <- identify_test_respondents(raw_data, free_text_all)
+  exclusions <- identify_test_respondents(collect_open_answers(raw_data))
   individual <- make_individual_table(
     filter_excluded_respondents(demographics_all, exclusions),
     filter_excluded_respondents(swd_all, exclusions)
   )
-  free_text <- filter_excluded_respondents(free_text_all, exclusions)
   write_excel_csv(individual, INDIVIDUAL_PATH, na = "")
-  write_excel_csv(free_text, file.path(PATH_PROCESSED, "swd_free_text.csv"), na = "")
-  write_excel_csv(exclusions, file.path(PATH_PROCESSED, "swd_excluded.csv"), na = "")
+  write_excel_csv(exclusions, TEST_EXCLUSIONS_PATH, na = "")
   message(sprintf(
-    "Analysis data: %d respondents, %d free-text answers, %d test exclusions.",
-    nrow(individual), nrow(free_text), nrow(exclusions)
+    "Analysis data: %d respondents, %d test exclusions.",
+    nrow(individual), nrow(exclusions)
   ))
 }
 

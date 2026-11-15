@@ -97,7 +97,11 @@ satisfies the formula above. `check_compute_swd()` checks that typical
 answer patterns give the expected SWD and status.
 Answers that are not monotone (a "yes" at a higher rate after a "no" at a
 lower one) do not change the path; they are counted in
-`staircase_non_monotone.csv`.
+`staircase_non_monotone.csv`. Because the routing only ever asks a higher
+rate after a "yes" and a lower rate after a "no", the answers on the path
+are monotone by construction; the check can only catch leftover answers
+off the path (answers stored for questions that the final path does not
+visit).
 
 ## Layout
 
@@ -108,7 +112,7 @@ R/                         analysis scripts, run in numeric order
 data/raw/                  SoSci Survey exports (not shared, git-ignored)
 data/processed/            analysis data written by step 01 (git-ignored)
 data/exclusion_ids.csv     exclusion lists (not shared, git-ignored)
-outputs/                   numeric CSVs, figures, sessionInfo (git-ignored)
+outputs/                   numeric CSVs and figures (git-ignored), sessionInfo.txt (tracked)
 docs/data_dictionary.xlsx
 ```
 
@@ -122,8 +126,22 @@ comment block that states the population, the estimand and the method.
 
 ## How to run
 
-Put the raw exports in `data/raw/` and the exclusion file in `data/`, open
-`swd-antipsychotics.Rproj`, or run from the repository root:
+Put the raw exports in `data/raw/` and the exclusion file in `data/`. The
+exports used are pinned by their SoSci export date stamp
+(`RAW_EXPORT_STAMPS` in `R/00_config.R`), so `data/raw/` must contain
+exactly one file of each of these names (the survey ID digits after `ja` /
+`de` may be any number):
+
+| Country | File |
+|---|---|
+| JP | `data_swd_ja<id>_2026-07-02_09-08.xlsx`, `values_swd_ja<id>_2026-05-22_16-02.csv`, `variables_swd_ja<id>_2026-05-22_16-02.csv` |
+| DE | `data_swd_de<id>_2026-07-03_08-33.xlsx`, `values_swd_de<id>_2026-05-22_16-07.csv`, `variables_swd_de<id>_2026-05-22_16-07.csv` |
+
+Other exports in the folder are ignored; a missing or duplicated file
+stops the run. R must run in a UTF-8 locale (the Japanese labels and the
+test-keyword pattern are UTF-8): `00_config.R` stops with a message
+otherwise (set e.g. `LANG=en_US.UTF-8`). Open `swd-antipsychotics.Rproj`,
+or run from the repository root:
 
 ```
 Rscript R/00_run_all.R
@@ -141,7 +159,7 @@ repository root (e.g. `Rscript R/03_regression.R`) once step 01 has written
 | 02 | `02_descriptives.R` (`02a`, `02b`) | Participant flow, characteristics by country, SWD by subgroup, SWD distribution |
 | 03 | `03_regression.R` | Univariable and LASSO linear regressions of the SWD, logistic regression of SWD > 40, Holm adjustment |
 | 04 | `04_interval_regression.R` | Interval regression treating the SWD as interval-censored (not reported) |
-| 05 | `05_multiple_imputation.R` (`05a`–`05c`) | Multiple imputation of the missing SWD with delta-adjusted and best/worst-case analyses; multiple imputation of missing covariates |
+| 05 | `05_multiple_imputation.R` (`05a`–`05c`) | Multiple imputation of the missing SWD (predictive mean matching with bootstrap of the observed cases) with delta-adjusted and best/worst-case analyses; multiple imputation of missing covariates |
 | 06 | `06_fibser_never_willing.R` | Post hoc Mann–Whitney test of the FIBSER total, never willing vs others |
 | 07 | `07_figures.R` | Figures 2 and 3 and the eAppendix 13 figure |
 
@@ -174,16 +192,32 @@ All files are in `outputs/` unless stated otherwise.
 | eAppendix 15 (data dictionary) | – | `docs/data_dictionary.xlsx` (static) |
 | Interval regression (not reported) | `04_interval_regression.R` | `interval_regression_intercepts.csv`, `interval_regression_univariable.csv` |
 
-The free-text reasons listed in eAppendix 7 and 10 come from
-`data/processed/swd_free_text.csv` (written by step 01); they are quoted,
-not computed.
+## Pooling of the imputed medians
+
+Rubin's rules assume an approximately normal estimate with a valid
+within-imputation variance, which a median of discrete 5-point data does
+not have (earlier versions pooled a bootstrap variance and gave, for
+Germany, an interval of 15–15 with SE 0). In `mi_pooled_estimates.csv`
+the `median` and `median_difference` rows of the imputation analyses
+therefore report the median of the per-imputation medians (for the Japan
+minus Germany difference, of the per-imputation differences), with their
+minimum and maximum across imputations in `imputation_min` and
+`imputation_max`; `se`, `between_variance`, `df`, `conf_low` and
+`conf_high` are empty. Single-dataset rows (complete case, best and worst
+case) report the sample median without an interval and leave the range
+empty. Mean and proportion rows are pooled with Rubin's rules
+(Barnard–Rubin df) as before. The delta-adjusted analyses report the same
+estimands as the other analyses, including the Japan minus Germany
+differences. The distribution of the per-imputation medians is in
+`mi_per_imputation_medians.csv`.
 
 ## Reproducibility
 
 Seeds are constants in the scripts: 20240529 before each cross-validated
-LASSO, 20261113 for the outcome imputation, 20261114 for the covariate
-imputation and 20261115 for the bootstrap of the median. `00_run_all.R`
-writes `outputs/sessionInfo.txt`.
+LASSO, 20261113 for the outcome imputation and 20261114 for the covariate
+imputation. `00_run_all.R` writes `outputs/sessionInfo.txt`, which is
+tracked in the repository (it records the R version, platform, locale and
+package versions of the run that produced the reported numbers).
 
 ## Code style
 
@@ -191,12 +225,21 @@ All R files follow the authors' R script style guide: a six-section header
 (copyright, author, file description with purpose, inputs, outputs and
 dependencies, libraries, functions, executed statements), `{tidyverse}` with
 the `%>%` pipe, at most 300 lines per file and 100 characters per line.
-`{lintr}` (configuration in `.lintr`) was run on every file.
+`{lintr}` (configuration in `.lintr`) was run on every file
+(`lintr::lint_dir("R")`). The remaining lints are deliberate:
+
+- `commented_code_linter` on header lines that list file paths (for example
+  `# Inputs:  data/processed/swd_individual.csv`): the paths read as R code
+  to the linter but are documentation.
+- `object_name_linter` on `mice.impute.pmmbounded`: {mice} finds a
+  user-defined imputation method only by the name `mice.impute.<method>`.
+- `object_length_linter` on `USABLE_SWD_STATUSES_EXCLUDING_NEVER`: kept for
+  a name that states exactly which statuses it holds.
 
 ## Software
 
 R 4.5.1. Packages: tidyverse (dplyr, tidyr, readr, tibble, purrr, stringr,
-ggplot2), here, readxl, fs, glmnet, survival, mice (3.19), sandwich.
+ggplot2), readxl, fs, glmnet, survival, mice (3.19), sandwich.
 
 ## Licence
 

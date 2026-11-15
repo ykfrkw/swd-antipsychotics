@@ -23,8 +23,9 @@ PMM_DONORS <- 5L
 IMPUTATION_ITERATIONS <- 1L # only the outcome is incomplete
 
 # 5. Function definitions -----
-# Bounded PMM. Parameter uncertainty is propagated with an approximate
-# Bayesian bootstrap of the observed cases; each missing value is then drawn
+# Bounded predictive mean matching with bootstrap of the observed cases:
+# parameter uncertainty is propagated by refitting the linear model on a
+# bootstrap sample of the observed cases; each missing value is then drawn
 # from the k donors (of that bootstrap sample) whose predicted means are
 # closest, restricted to donors whose observed SWD lies in the respondent's
 # admissible set. Called by mice() via method = "pmmbounded".
@@ -50,7 +51,7 @@ mice.impute.pmmbounded <- function(y, ry, x, wy = NULL, swd_lower, swd_upper,
       stop("No admissible donor for row ", row, "; widen the donor pool.")
     }
     distance <- abs(donor_mean[is_admissible] -
-      drop(design[row, ] %*% coefficients))
+                      drop(design[row, ] %*% coefficients))
     # Random tie-breaking: predictors are cell indicators, so ties are common.
     nearest <- order(distance, stats::runif(length(distance)))
     n_pool <- min(donors, length(nearest))
@@ -125,11 +126,13 @@ assert_imputations_admissible <- function(datasets) {
 }
 
 # Delta adjustment (MNAR): shift imputed values of non-completers, round to
-# the 5-point grid, truncate to [0, 60] and to the admissible set.
+# the 5-point grid, truncate to [0, 60] and to the admissible set. Rounding
+# is half up because round() rounds half to even, which would send a
+# midpoint up or down depending on the grid value.
 apply_delta <- function(datasets, delta, is_shifted_country) {
   map(datasets, \(completed) {
     is_shifted <- !completed$has_swd & is_shifted_country(completed$country)
-    shifted <- SWD_STEP * round((completed$swd + delta) / SWD_STEP)
+    shifted <- SWD_STEP * floor((completed$swd + delta) / SWD_STEP + 0.5)
     shifted <- pmin(pmax(shifted, completed$swd_lower), completed$swd_upper)
     completed %>% mutate(swd = if_else(is_shifted, shifted, .data$swd))
   })

@@ -1,6 +1,7 @@
 # Participant data are never shared (see README)
 data/
-outputs/
+outputs/*
+!outputs/sessionInfo.txt
 *.xlsx
 !docs/data_dictionary.xlsx
 *.csv

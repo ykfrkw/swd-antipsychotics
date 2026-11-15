@@ -162,19 +162,29 @@ assigned_drug_history <- function(individual) {
   )
 }
 
-# JP and DE yes / no / don't know answers collapsed to English levels.
+# JP and DE yes / no / don't know answers collapsed to English levels; an
+# unmapped label would otherwise enter the model as a level of its own.
 regression_binary_response <- function(x) {
   response_text <- as.character(x)
   lower <- tolower(trimws(response_text))
-  case_when(
-    is.na(response_text) | trimws(response_text) == "" ~ NA_character_,
+  is_blank <- is.na(response_text) | trimws(response_text) == ""
+  mapped <- case_when(
+    is_blank ~ NA_character_,
     grepl("^(yes|y|1|ja)$", lower) | grepl("はい", response_text) ~ "Yes",
     grepl("^(no|n|2|nein)$", lower) | grepl("いいえ", response_text) ~ "No",
     grepl(UNKNOWN_RESPONSE_PATTERN, lower) |
       grepl("わからない|答えたくない", response_text) ~
       "Unknown / prefer not to answer",
-    TRUE ~ response_text
+    TRUE ~ NA_character_
   )
+  is_unknown <- !is_blank & is.na(mapped)
+  if (any(is_unknown)) {
+    stop(sprintf(
+      "Unknown yes/no label(s): %s",
+      paste(sprintf("[%s]", unique(response_text[is_unknown])), collapse = " | ")
+    ))
+  }
+  mapped
 }
 
 make_regression_covariates <- function(individual) {

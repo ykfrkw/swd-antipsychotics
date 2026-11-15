@@ -180,7 +180,7 @@ compute_person_tracks <- function(row, country, nodes) {
     is_assigned_track <- !is.na(assigned_ra01) &&
       assigned_ra01 == DRUG_TRACKS$ra01[[track_index]]
     if (!is.na(assigned_ra01) && !is_assigned_track &&
-      sum(!is.na(numeric_response(responses))) > 0) {
+          sum(!is.na(numeric_response(responses))) > 0) {
       warning("RA01/randomized track mismatch in ", country, " CASE ",
         row[["CASE"]][[1]], ": ", drug, " responses present.",
         call. = FALSE
@@ -202,7 +202,17 @@ compute_person_tracks <- function(row, country, nodes) {
 
 apply_swd_country <- function(survey_data, country, nodes) {
   swd_columns <- unique(unlist(nodes[DRUG_TRACKS$drug], use.names = FALSE))
-  for (column_name in setdiff(swd_columns, names(survey_data))) {
+  absent_columns <- setdiff(swd_columns, names(survey_data))
+  # An absent column is treated as unanswered, which would bias the SWD if
+  # the export (not the respondents) lost it, so the gap is made visible.
+  if (length(absent_columns) > 0) {
+    warning(
+      country, " export lacks staircase columns (treated as unanswered): ",
+      paste(absent_columns, collapse = ", "),
+      call. = FALSE
+    )
+  }
+  for (column_name in absent_columns) {
     survey_data[[column_name]] <- NA_integer_
   }
   if (!RANDOMIZATION_COLUMN %in% names(survey_data)) {

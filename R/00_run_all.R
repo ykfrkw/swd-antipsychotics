@@ -31,7 +31,7 @@ ANALYSIS_SCRIPTS <- c(
   "07_figures.R"
 )
 ANALYSIS_PACKAGES <- c(
-  "tidyverse", "here", "readxl", "fs", "glmnet", "survival", "mice", "sandwich"
+  "tidyverse", "readxl", "fs", "glmnet", "survival", "mice", "sandwich"
 )
 SESSION_INFO_PATH <- file.path("outputs", "sessionInfo.txt")
 

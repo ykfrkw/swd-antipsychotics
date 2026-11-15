@@ -6,38 +6,38 @@
 # Date: 2026-11-14 (last revised)
 
 # 3. File description -----
-# Purpose: Shared configuration for every analysis script: project paths,
-#          survey codes, the staircase tree, the item maps, the expected size
-#          of the analysis set and the respondent exclusion lists (read at
-#          run time from a local, untracked file).
+# Purpose: Shared configuration for every analysis script: paths, pinned raw
+#          exports, survey codes, the staircase tree, the item maps, the size
+#          of the analysis set and the exclusion lists (read at run time from
+#          a local, untracked file); stops unless the locale is UTF-8.
 # Inputs:  data/exclusion_ids.csv (not shared; see README.md)
 # Outputs: none (defines constants in the calling environment)
-# Depends: tidyverse; here (optional, falls back to the working directory)
+# Depends: tidyverse
 
 # 4. source() and library() -----
 suppressPackageStartupMessages(library(tidyverse))
 
 # Constants -----
-# here::here() finds swd-antipsychotics.Rproj; without {here} the scripts
-# must be run from the repository root.
-PROJECT_ROOT <- if (requireNamespace("here", quietly = TRUE)) {
-  here::here()
-} else {
-  normalizePath(getwd(), mustWork = TRUE)
-}
+# Every script sources R/00_config.R, so it runs from the repository root.
+PROJECT_ROOT <- normalizePath(getwd(), mustWork = TRUE)
+# Export stamps of the SoSci files used (see README.md), pinned so that a
+# newer export or a changed file time cannot change the analysed data.
+RAW_EXPORT_STAMPS <- list(
+  jp = c(data = "2026-07-02_09-08", values = "2026-05-22_16-02", variables = "2026-05-22_16-02"),
+  de = c(data = "2026-07-03_08-33", values = "2026-05-22_16-07", variables = "2026-05-22_16-07")
+)
 PATH_R <- file.path(PROJECT_ROOT, "R")
 PATH_RAW <- file.path(PROJECT_ROOT, "data", "raw")
 PATH_PROCESSED <- file.path(PROJECT_ROOT, "data", "processed")
 PATH_OUTPUTS <- file.path(PROJECT_ROOT, "outputs")
 EXCLUSION_IDS_PATH <- file.path(PROJECT_ROOT, "data", "exclusion_ids.csv")
 INDIVIDUAL_PATH <- file.path(PATH_PROCESSED, "swd_individual.csv")
+TEST_EXCLUSIONS_PATH <- file.path(PATH_PROCESSED, "swd_excluded.csv")
 COUNTRY_CODES <- c("JP", "DE")
 RESPONDENT_KEY <- c("country", "respondent_id")
-
 NA_CODE <- -9L
 YES <- 1L
 NO <- 2L
-
 DRUG_TRACKS <- tribble(
   ~ra01, ~drug, ~drug_code,
   1L, "risperidone", "ris",
@@ -136,21 +136,6 @@ STATUS_LEVELS <- c(
   "not_assigned"
 )
 
-ADDITIONAL_DEMO_FIELDS <- c(
-  "insurance_burden", "living_situation", "n_psych_admissions",
-  "last_psych_admission", "onset_age_band", "family_history_schizophrenia",
-  "family_history_bipolar", "family_history_depression",
-  "family_history_anxiety", "family_history_ocd",
-  "family_history_developmental", "drug_history_asenapine",
-  "drug_history_aripiprazole", "drug_history_olanzapine",
-  "drug_history_quetiapine", "drug_history_clozapine",
-  "drug_history_haloperidol", "drug_history_paliperidone",
-  "drug_history_brexpiprazole", "drug_history_blonanserin",
-  "drug_history_perospirone", "drug_history_risperidone",
-  "drug_history_lurasidone", "ae_duration", "ae_severity", "ae_interference",
-  "ever_used_antipsychotic"
-)
-
 DEMO_MAP <- list(
   jp = c(
     age_band = "DE02",
@@ -225,10 +210,17 @@ DEMO_MAP <- list(
   )
 )
 
+# Items carried through unchanged: every mapped item except the four that
+# are harmonized, the randomization code and the free text.
+ADDITIONAL_DEMO_FIELDS <- setdiff(
+  names(DEMO_MAP$jp),
+  c("age_band", "sex", "educ", "employ", "randomized_drug", "free_text_no_value_at_zero")
+)
+
 AGE_LEVELS <- c("18-24", "25-34", "35-44", "45-54", "55-64", "65-74", "75+")
 SEX_LEVELS <- c("female", "male", "other_or_prefer_not_to_say")
 
-TEST_KEYWORD_PATTERN <- "(?i)(test|テスト|てすと|tesuto|dummy|ダミー|sample|サンプル)"
+TEST_KEYWORD_PATTERN <- "(?i)(\\b(test|tesuto|dummy|sample)\\b|テスト|てすと|ダミー|サンプル)"
 
 # Shared analysis-set constants -----
 # Expected size of the primary analysis set; the scripts stop on drift.
@@ -253,6 +245,17 @@ PRIMARY_SPECIFICATION <- "primary_including_never_willing"
 EXCLUDING_NEVER_SPECIFICATION <- "sensitivity_excluding_never_willing"
 
 # 5. Function definitions -----
+# The Japanese labels and the test-keyword pattern are UTF-8; in another
+# locale they would be read and matched wrongly without any error.
+check_utf8_locale <- function() {
+  if (!isTRUE(l10n_info()[["UTF-8"]])) {
+    stop("R must run in a UTF-8 locale (e.g. LANG=en_US.UTF-8); LC_CTYPE is ",
+      Sys.getlocale("LC_CTYPE"),
+      call. = FALSE
+    )
+  }
+}
+
 # Respondent IDs are personal data, so they live in an untracked file with
 # columns list_name, country, respondent_id (all read as character).
 read_exclusion_ids <- function(path = EXCLUSION_IDS_PATH) {
@@ -277,6 +280,7 @@ exclusion_ids_by_country <- function(exclusion_ids, list_name) {
 }
 
 # 6. Executed statements -----
+check_utf8_locale()
 # Only the exclusion lists are loaded (this file is sourced by every script).
 EXCLUSION_IDS <- read_exclusion_ids()
 

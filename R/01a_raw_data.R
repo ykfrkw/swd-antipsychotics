@@ -7,13 +7,14 @@
 
 # 3. File description -----
 # Purpose: Read the SoSci Survey exports (data, values, variables) of
-#          the Japanese and German survey versions, collect the open
-#          (free-text) answers and identify test respondents (by ID or by a
-#          test keyword in a free-text answer).
-# Inputs:  data/raw/{data,values,variables}_swd_{ja,de}*_*
+#          the Japanese and German survey versions and identify test
+#          respondents (by ID or by a test keyword in an open answer; the
+#          open answers are screened in memory and not written out).
+# Inputs:  data/raw/{data,values,variables}_swd_{ja,de}<id>_<stamp>.*
+#          (stamps pinned in RAW_EXPORT_STAMPS)
 # Outputs: none (function definitions)
-# Depends: 00_config.R (PATH_RAW, NA_CODE, EXPLICIT_TEST_IDS,
-#          TEST_KEYWORD_PATTERN); tidyverse, readxl, fs
+# Depends: 00_config.R (PATH_RAW, RAW_EXPORT_STAMPS, NA_CODE,
+#          EXPLICIT_TEST_IDS, TEST_KEYWORD_PATTERN); tidyverse, readxl, fs
 
 # 4. source() and library() -----
 # None: the calling script loads tidyverse and sources 00_config.R.
@@ -21,9 +22,7 @@
 # Constants -----
 FILE_PREFIX_BY_COUNTRY <- c(jp = "ja", de = "de")
 SOSCI_TSV_ENCODING <- "UTF-16LE"
-FREE_TEXT_COLUMNS <- c(
-  "respondent_id", "country", "variable", "label", "question", "response"
-)
+OPEN_ANSWER_COLUMNS <- c("country", "respondent_id", "response")
 
 # 5. Function definitions -----
 find_raw_file <- function(path_raw, country, kind, extension) {
@@ -31,19 +30,16 @@ find_raw_file <- function(path_raw, country, kind, extension) {
     jp = FILE_PREFIX_BY_COUNTRY[["jp"]],
     de = FILE_PREFIX_BY_COUNTRY[["de"]]
   )
-  pattern <- paste0(kind, "_swd_", country_prefix, "[0-9]+_.*\\.", extension, "$")
+  export_stamp <- RAW_EXPORT_STAMPS[[country]][[kind]]
+  pattern <- paste0(
+    "/", kind, "_swd_", country_prefix, "[0-9]+_", export_stamp, "\\.", extension, "$"
+  )
   matched_files <- fs::dir_ls(path_raw, regexp = pattern, type = "file")
 
-  if (length(matched_files) == 0) {
-    stop("Raw file not found: ", pattern, call. = FALSE)
-  }
-
-  if (length(matched_files) > 1) {
-    file_info <- fs::file_info(matched_files)
-    matched_files <- matched_files[which.max(file_info$modification_time)]
-    warning(
-      "Multiple raw files matched ", pattern, "; using newest file.",
-      call. = FALSE
+  if (length(matched_files) != 1) {
+    stop(
+      "Expected exactly one raw file matching ", pattern, " in ", path_raw,
+      ", found ", length(matched_files), call. = FALSE
     )
   }
 
@@ -127,24 +123,17 @@ load_raw_data <- function(path_raw = PATH_RAW) {
   )
 }
 
-make_free_text_country <- function(survey_data, variables, country) {
+# Non-empty open answers in long form, for the test-keyword screen only.
+collect_open_answers_country <- function(survey_data, variables, country) {
   open_variables <- open_variable_names(variables)
   open_variables <- intersect(open_variables, names(survey_data))
 
   if (length(open_variables) == 0) {
     empty_table <- as_tibble(
-      set_names(rep(list(character()), length(FREE_TEXT_COLUMNS)), FREE_TEXT_COLUMNS)
+      set_names(rep(list(character()), length(OPEN_ANSWER_COLUMNS)), OPEN_ANSWER_COLUMNS)
     )
     return(empty_table)
   }
-
-  metadata <- variables %>%
-    filter(.data$VAR %in% open_variables) %>%
-    transmute(
-      variable = .data$VAR,
-      label = .data$LABEL,
-      question = .data$QUESTION
-    )
 
   answers_long <- survey_data %>%
     transmute(
@@ -160,18 +149,19 @@ make_free_text_country <- function(survey_data, variables, country) {
 
   answers_long %>%
     filter(!is.na(.data$response), .data$response != "") %>%
-    mutate(country = country, .before = "variable") %>%
-    left_join(metadata, by = "variable") %>%
-    select(all_of(FREE_TEXT_COLUMNS))
+    mutate(country = country) %>%
+    select(all_of(OPEN_ANSWER_COLUMNS))
 }
 
-make_free_text_table <- function(raw) {
+collect_open_answers <- function(raw) {
   bind_rows(
-    make_free_text_country(raw$jp_data, raw$jp_variables, "JP"),
-    make_free_text_country(raw$de_data, raw$de_variables, "DE")
+    collect_open_answers_country(raw$jp_data, raw$jp_variables, "JP"),
+    collect_open_answers_country(raw$de_data, raw$de_variables, "DE")
   )
 }
 
+# The Latin keywords need word boundaries (TEST_KEYWORD_PATTERN) so that a
+# genuine answer containing e.g. "latest" or "protest" is not flagged.
 extract_first_keyword <- function(response) {
   keyword_match <- regexpr(TEST_KEYWORD_PATTERN, response, perl = TRUE)
   match_length <- attr(keyword_match, "match.length")
@@ -189,14 +179,14 @@ clean_matched_text <- function(response) {
   gsub("[\r\n]+", " ", response)
 }
 
-identify_test_respondents <- function(raw, free_text_long) {
+identify_test_respondents <- function(open_answers) {
   explicit_rows <- EXPLICIT_TEST_IDS %>%
     mutate(
       reason = "explicit_id",
       matched_text = NA_character_
     )
 
-  keyword_rows <- free_text_long %>%
+  keyword_rows <- open_answers %>%
     mutate(keyword = extract_first_keyword(.data$response)) %>%
     filter(!is.na(.data$keyword)) %>%
     transmute(

@@ -9,8 +9,9 @@
 # Purpose: Participant flow counts per country (Figure 2): from survey link
 #          clicks through screening, randomization and staircase status to
 #          the analysis set, with the internal-consistency identities.
-# Inputs:  none (functions receive swd_individual.csv and read the raw SoSci
-#          data exports via 01a_raw_data.R)
+# Inputs:  data/processed/swd_excluded.csv (test respondents removed by
+#          step 01); functions receive swd_individual.csv and read the raw
+#          SoSci data exports via 01a_raw_data.R
 # Outputs: none (function definitions)
 # Depends: 00_config.R, 01a_raw_data.R (find_raw_file,
 #          read_sosci_data_excel); tidyverse
@@ -72,8 +73,8 @@ load_screening <- function(country_code) {
 }
 
 # Non-randomized respondents with their screening flags.
-load_non_randomized <- function(person) {
-  screening <- bind_rows(load_screening("JP"), load_screening("DE")) %>%
+load_non_randomized <- function(person, screening_all) {
+  screening <- screening_all %>%
     anti_join(EXPLICIT_TEST_IDS, by = RESPONDENT_KEY)
   person_not_randomized <- filter(person, !.data$randomized)
   stopifnot(nrow(anti_join(person_not_randomized, screening, by = RESPONDENT_KEY)) == 0)
@@ -100,10 +101,35 @@ check_exclusion_statuses <- function(person) {
   }
 }
 
+# test_removed is entered minus assessed; it must equal the export cases
+# that step 01 actually removed, each of them a listed test respondent, or
+# the admin-overview counts (FLOW_ENTERED) do not match the data.
+check_test_removed <- function(screening_all, person, test_removed) {
+  removed_cases <- anti_join(screening_all, person, by = RESPONDENT_KEY)
+  test_exclusions <- read_csv(
+    TEST_EXCLUSIONS_PATH,
+    col_types = cols(.default = col_character())
+  )
+  is_listed_test <- nrow(anti_join(removed_cases, test_exclusions, by = RESPONDENT_KEY)) == 0
+  if (!is_listed_test) {
+    stop("Respondents missing from the analysis data are not test exclusions.", call. = FALSE)
+  }
+  for (country_code in COUNTRY_CODES) {
+    n_removed <- sum(removed_cases$country == country_code)
+    if (test_removed[[country_code]] != n_removed) {
+      stop(sprintf(
+        "%s: flow test_removed = %d, but %d test respondents were removed.",
+        country_code, test_removed[[country_code]], n_removed
+      ), call. = FALSE)
+    }
+  }
+}
+
 # Stage counts as a list of named (JP, DE) integer vectors.
 compute_flow_counts <- function(individual) {
   person <- assigned_status(individual)
-  non_randomized <- load_non_randomized(person)
+  screening_all <- bind_rows(load_screening("JP"), load_screening("DE"))
+  non_randomized <- load_non_randomized(person, screening_all)
   check_exclusion_statuses(person)
   per_country <- function(count_one) vapply(COUNTRY_CODES, count_one, integer(1))
   count_flag <- function(flag) {
@@ -113,6 +139,7 @@ compute_flow_counts <- function(individual) {
     per_country(\(code) sum(person$country == code & person$randomized & person$status == status))
   }
   assessed <- per_country(\(code) sum(person$country == code))
+  check_test_removed(screening_all, person, FLOW_ENTERED - assessed)
   randomized <- per_country(\(code) sum(person$country == code & person$randomized))
   recent_n <- per_country(\(code) length(RECENT_ADMISSION_EXCLUDE[[code]]))
   excluded <- per_country(\(code) length(ANALYSIS_EXCLUDE[[code]]))
@@ -141,7 +168,7 @@ check_flow_identities <- function(flow) {
     all(flow$clicked == flow$left_info + flow$entered),
     all(flow$entered - flow$test_removed == flow$assessed),
     all(flow$assessed == flow$ineligible + flow$left_consent + flow$left_after +
-      flow$randomized),
+          flow$randomized),
     all(flow$randomized == flow$no_response + flow$incomplete + flow$determinable),
     all(flow$determinable == flow$completed + flow$never + flow$always),
     all(flow$determinable == flow$excluded + flow$analyzed),

@@ -113,7 +113,7 @@ verify_interval_mapping <- function() {
     all(is_same(SWD_CEILING - terminals$min_no_rate, bounds$swd_lower)),
     all(is_same(SWD_CEILING - terminals$max_yes_rate, bounds$swd_upper)),
     all(sort(terminals$swd[terminals$swd_status == "completed"]) ==
-      seq(SWD_STEP, SWD_CEILING, by = SWD_STEP))
+          seq(SWD_STEP, SWD_CEILING, by = SWD_STEP))
   )
 }
 

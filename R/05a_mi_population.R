@@ -11,7 +11,7 @@
 #          answers and the stage at which non-completers stopped, the
 #          admissible SWD range of respondents who stopped part-way through
 #          the staircase, and the 276 respondents to impute.
-# Inputs:  data/raw/data_swd_{ja,de}*.xlsx (newest; comprehension items,
+# Inputs:  data/raw/data_swd_{ja,de}*.xlsx (pinned export; comprehension items,
 #          staircase answers)
 # Outputs: none (function definitions)
 # Depends: 00_config.R, 00c_analysis_set.R, 01a_raw_data.R; tidyverse
